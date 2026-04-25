@@ -1,0 +1,2869 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>LEAGUE SCAN</title>
+  <script>window.__IS_MOBILE = window.innerWidth <= 768;</script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    #ui-pc,#ui-mobile{display:none}
+    @media(min-width:769px){
+      #ui-pc{display:block}
+      #ui-mobile{display:none!important}
+      html,body{height:100%;overflow:hidden}
+      /* ── TOKENS ── */
+    :root {
+      --bg:#0d0f14; --surface:#13161e; --surface2:#1a1e2a; --surface3:#21273a;
+      --border:#2a2f3f; --border2:#363d52;
+      --accent:#00e5ff; --accent-dim:rgba(0,229,255,.12); --accent-glow:rgba(0,229,255,.35);
+      --green:#00e676;  --green-dim:rgba(0,230,118,.12);
+      --red:#ff3d5a;    --red-dim:rgba(255,61,90,.12);
+      --amber:#ffb300;  --amber-dim:rgba(255,179,0,.12);
+      --purple:#b980ff;
+      --text:#e2e8f0; --text-muted:#64748b; --text-dim:#94a3b8;
+      --mono:'JetBrains Mono',monospace; --display:'Syne',sans-serif;
+      --r:10px; --rs:6px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden}
+    body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px}
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-track{background:var(--surface)}
+    ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+    ::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+    /* ── LAYOUT ── */
+    .app-shell{display:grid;grid-template-columns:290px 1fr;height:100vh;width:100vw}
+
+    /* ── SIDEBAR ── */
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+    .sb-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-shrink:0}
+    .brand-icon{width:30px;height:30px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:13px;box-shadow:0 0 10px var(--accent-glow);flex-shrink:0}
+    .brand-name{font-family:var(--display);font-size:13px;font-weight:800;color:var(--text);line-height:1}
+    .brand-sub{font-size:9px;color:var(--text-muted);letter-spacing:1.2px;text-transform:uppercase;margin-top:1px}
+    .idb-badge{margin-left:auto;font-size:9px;padding:2px 7px;border-radius:20px;background:var(--green-dim);color:var(--green);border:1px solid rgba(0,230,118,.25);font-weight:700;white-space:nowrap;flex-shrink:0}
+    .idb-badge.error{background:var(--red-dim);color:var(--red);border-color:rgba(255,61,90,.25)}
+    .offline-badge{font-size:9px;padding:2px 7px;border-radius:20px;background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,179,0,.25);font-weight:700;white-space:nowrap;flex-shrink:0;margin-left:4px}
+
+    .stat-row{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--border);border-bottom:1px solid var(--border);flex-shrink:0}
+    .stat-cell{background:var(--surface);padding:8px 4px;text-align:center}
+    .stat-label{font-size:8px;color:var(--text-muted);letter-spacing:.9px;text-transform:uppercase;margin-bottom:2px}
+    .stat-value{font-family:var(--display);font-size:20px;font-weight:800;line-height:1;transition:color .3s}
+    .c-blue .stat-value{color:#60a5fa} .c-purple .stat-value{color:var(--purple)} .c-green .stat-value{color:var(--green)}
+
+    .sb-body{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:7px}
+
+    .block{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);overflow:visible}
+    .block-head{padding:6px 11px;background:var(--surface3);border-bottom:1px solid var(--border);border-radius:var(--r) var(--r) 0 0;display:flex;align-items:center;gap:6px;font-size:9.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:var(--text-muted)}
+    .block-head i{font-size:10px}
+    .block-head i.ci{color:var(--accent)}
+    .block-head i.ai{color:var(--amber)}
+    .block-body{padding:9px}
+
+    .coll-hd{width:100%;background:var(--surface3);border:none;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:6px 11px;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:var(--text-muted);cursor:pointer;transition:color .2s;border-radius:var(--r) var(--r) 0 0}
+    .coll-hd:hover{color:var(--text)}
+    .coll-hd .ci{color:var(--accent);font-size:10px}
+    .coll-hd .chev{margin-left:auto;font-size:9px;transition:transform .22s}
+    .coll-hd.open .chev{transform:rotate(180deg)}
+    .coll-bd{display:none;padding:9px}
+    .coll-bd.open{display:block}
+
+    .fg2{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px}
+    .fw{display:flex;flex-direction:column;gap:3px}
+    .fl{font-size:9px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--text-muted)}
+    .fi,.fs{background:var(--bg);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);font-family:var(--mono);font-size:12.5px;font-weight:600;padding:6px 9px;width:100%;outline:none;transition:border-color .2s,box-shadow .2s;text-align:center}
+    .fi:focus,.fs:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-dim)}
+    .fi.scan{text-align:left;font-size:12px}
+    @keyframes scanPulse{0%,100%{box-shadow:0 0 0 2px var(--green-dim)}50%{box-shadow:0 0 0 5px rgba(0,230,118,.15),0 0 16px rgba(0,230,118,.1)}}
+    .fi.scan:focus{border-color:var(--green);animation:scanPulse 2s infinite}
+    .fs option{background:var(--surface2)}
+    .frow{display:flex;gap:6px}
+    .frow .fi{flex:1;text-align:left;font-size:12px}
+
+    .btn{border:none;border-radius:var(--rs);cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.4px;padding:7px 11px;display:flex;align-items:center;justify-content:center;gap:5px;width:100%;transition:all .14s;text-transform:uppercase;white-space:nowrap}
+    .btn:active{transform:scale(.97)}
+    .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text-dim)}
+    .btn-ghost:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+    .btn-cyan{background:var(--accent-dim);border:1px solid rgba(0,229,255,.3);color:var(--accent)}
+    .btn-cyan:hover{background:rgba(0,229,255,.2);box-shadow:0 0 10px var(--accent-glow)}
+    .btn-green{background:var(--green-dim);border:1px solid rgba(0,230,118,.3);color:var(--green)}
+    .btn-green:hover{background:rgba(0,230,118,.2)}
+    .btn-red{background:var(--red-dim);border:1px solid rgba(255,61,90,.3);color:var(--red)}
+    .btn-red:hover{background:rgba(255,61,90,.2)}
+    .btn-amber{background:var(--amber-dim);border:1px solid rgba(255,179,0,.3);color:var(--amber)}
+    .btn-amber:hover{background:rgba(255,179,0,.2)}
+    .btn-purple{background:rgba(185,128,255,.1);border:1px solid rgba(185,128,255,.3);color:var(--purple)}
+    .btn-purple:hover{background:rgba(185,128,255,.2)}
+    .btn-ico{width:auto;padding:7px 12px}
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .vstack{display:flex;flex-direction:column;gap:6px}
+    .div{height:1px;background:var(--border);margin:7px 0}
+
+    /* Sesi */
+    .sesi-display{display:flex;align-items:center;gap:10px;padding:10px 11px;background:var(--bg);border-bottom:1px solid var(--border)}
+    .sesi-num{font-family:var(--display);font-size:52px;font-weight:800;line-height:1;color:var(--amber);min-width:78px;text-align:center;text-shadow:0 0 20px rgba(255,179,0,.4)}
+    @keyframes numPop{0%{transform:scale(1.28);color:#fff;text-shadow:0 0 28px #fff}100%{transform:scale(1);color:var(--amber);text-shadow:0 0 20px rgba(255,179,0,.4)}}
+    .sesi-num.pop{animation:numPop .2s ease}
+    .sesi-meta{flex:1;display:flex;flex-direction:column;gap:5px}
+    .sesi-mr{display:flex;justify-content:space-between;align-items:center;gap:4px}
+    .sesi-ml{font-size:9px;color:var(--text-muted);letter-spacing:.7px;text-transform:uppercase;white-space:nowrap}
+    .sesi-mv{font-size:11.5px;font-weight:700;color:var(--text-dim);text-align:right}
+    .sesi-mv.hi{color:var(--green)}
+    #sesiStatusBadge{font-size:9px;padding:1px 6px;border-radius:10px;background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,179,0,.25);font-weight:700;transition:all .3s;white-space:nowrap}
+    #sesiStatusBadge.ok{background:var(--green-dim);color:var(--green);border-color:rgba(0,230,118,.25)}
+    .sesi-actions{display:flex;align-items:center;justify-content:space-between;padding:8px 11px;gap:8px}
+    .sesi-shortcut{font-size:9px;color:var(--text-muted);display:flex;align-items:center;gap:4px;white-space:nowrap}
+    .kbd{display:inline-flex;align-items:center;justify-content:center;background:var(--surface3);border:1px solid var(--border2);border-radius:3px;padding:1px 6px;font-size:11px;color:var(--text-dim);font-family:var(--mono);line-height:1.4}
+    #btnResetSesi{width:auto;padding:7px 14px}
+
+    /* Camera */
+    #reader{display:none;border-radius:var(--rs);overflow:hidden;border:1px solid var(--border2);margin-top:7px}
+    #reader__scan_region{border:2px solid var(--accent)!important}
+    #reader__dashboard{display:none!important}
+
+    /* Main */
+    .main-content{background:var(--bg);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+    .topbar{padding:9px 18px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:11px;flex-shrink:0}
+    .tb-lbl{font-size:9.5px;color:var(--text-muted);letter-spacing:.9px;text-transform:uppercase;white-space:nowrap}
+    .tb-bin{font-family:var(--display);font-size:16px;font-weight:800;color:var(--accent);min-width:48px}
+    .tb-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
+    .tb-sw{flex:1;position:relative}
+    .tb-si{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:10px}
+    .tb-s{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);font-family:var(--mono);font-size:11.5px;padding:6px 9px 6px 27px;width:100%;outline:none;transition:border-color .2s}
+    .tb-s:focus{border-color:var(--accent)}
+    .table-wrap{flex:1;overflow:auto;padding:0 18px 13px;position:relative}
+    .dtable{width:100%;border-collapse:collapse;font-size:12px}
+    .dtable thead{position:sticky;top:0;z-index:10}
+    .dtable thead th{background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);font-size:9.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;padding:7px 9px;text-align:center;white-space:nowrap}
+    .dtable tbody td{border:1px solid var(--border);padding:6px 9px;text-align:center;color:var(--text-dim);vertical-align:middle;white-space:nowrap;background:var(--surface);transition:background .14s}
+    .dtable tbody tr:hover td{background:var(--surface2);color:var(--text)}
+    .row-s td{background:rgba(0,229,255,.03)}
+    .row-w td{background:rgba(0,230,118,.03)}
+    .row-empty td{color:var(--text-muted)!important;font-style:italic;padding:38px!important}
+    @keyframes rowIn{from{opacity:0;transform:translateX(-7px)}to{opacity:1;transform:none}}
+    .row-new{animation:rowIn .35s ease}
+    .btn-del{background:var(--red-dim);border:1px solid rgba(255,61,90,.25);color:var(--red);border-radius:4px;cursor:pointer;padding:3px 9px;font-size:11px;transition:all .14s;font-family:var(--mono)}
+    .btn-del:hover{background:rgba(255,61,90,.25)}
+
+    /* ALL BIN */
+    .btn-allbin{background:var(--accent-dim);border:1px solid rgba(0,229,255,.3);color:var(--accent);border-radius:var(--rs);cursor:pointer;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.5px;padding:6px 12px;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:all .15s;text-transform:uppercase;flex-shrink:0}
+    .btn-allbin:hover{background:rgba(0,229,255,.2);box-shadow:0 0 10px var(--accent-glow)}
+    .btn-allbin.active{background:rgba(0,229,255,.25);box-shadow:0 0 12px var(--accent-glow);border-color:var(--accent)}
+    #allBinOverlay{position:fixed;inset:0;background:var(--bg);z-index:100;display:none;flex-direction:column}
+    .ab-toolbar{padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .ab-title{font-family:var(--display);font-size:13px;font-weight:800;color:var(--accent);white-space:nowrap;display:flex;align-items:center;gap:7px}
+    .ab-search-wrap{flex:1;position:relative}
+    .ab-search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:10px;pointer-events:none}
+    .ab-search{width:100%;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 9px 6px 27px;outline:none;transition:border-color .2s}
+    .ab-search:focus{border-color:var(--accent)}
+    .ab-total{font-size:10px;color:var(--text-muted);white-space:nowrap}
+    .ab-close{background:var(--red-dim);border:1px solid rgba(255,61,90,.3);color:var(--red);border-radius:var(--rs);cursor:pointer;padding:6px 10px;font-size:12px;transition:all .15s;flex-shrink:0}
+    .ab-close:hover{background:rgba(255,61,90,.2)}
+    .ab-cards{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-content:start}
+    .ab-empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-muted);font-size:12px;font-style:italic}
+    .bin-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px 12px;cursor:pointer;transition:all .18s;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;width:155px;min-width:155px;flex-shrink:0}
+    .bin-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);opacity:0;transition:opacity .18s}
+    .bin-card:hover{border-color:var(--accent);background:var(--surface3);transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.4)}
+    .bin-card:hover::before{opacity:1}
+    .bin-card:active{transform:scale(.97)}
+    .bc-name{font-family:var(--display);font-size:15px;font-weight:800;color:var(--text);letter-spacing:.5px;word-break:break-all}
+    .bc-qty{font-family:var(--display);font-size:28px;font-weight:800;color:var(--amber);line-height:1}
+    .bc-lbl{font-size:8.5px;color:var(--text-muted);letter-spacing:.8px;text-transform:uppercase}
+    .bc-meta{display:flex;flex-direction:column;gap:3px}
+    .bc-brand-row{font-size:9px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bc-lokasi{display:inline-block;font-size:9px;padding:1px 6px;border-radius:10px;background:var(--green-dim);color:var(--green);border:1px solid rgba(0,230,118,.2);font-weight:700}
+    .bc-lokasi.display{background:rgba(185,128,255,.1);color:var(--purple);border-color:rgba(185,128,255,.2)}
+    .bc-lokasi.riject{background:var(--red-dim);color:var(--red);border-color:rgba(255,61,90,.2)}
+
+    /* ── BIN CARD CHECKBOX ── */
+    .bc-check{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;z-index:5;flex-shrink:0}
+    .bc-check:hover{border-color:var(--green)}
+    .bc-check.checked{background:var(--green);border-color:var(--green);box-shadow:0 0 8px rgba(0,230,118,.4)}
+    .bc-check.checked::after{content:'✓';color:#000;font-size:11px;font-weight:900;line-height:1}
+    .bin-card.checked-card{border-color:rgba(0,230,118,.4);background:rgba(0,230,118,.04)}
+    .bin-card.checked-card::before{opacity:1;background:var(--green)}
+    #abDetail{position:fixed;inset:0;background:var(--bg);z-index:500;display:none;flex-direction:column}
+    #abDetail.open{display:flex}
+    .abd-toolbar{padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .abd-back{background:var(--surface3);border:1px solid var(--border2);color:var(--text-dim);border-radius:var(--rs);cursor:pointer;padding:6px 12px;font-size:10px;font-family:var(--mono);font-weight:700;display:flex;align-items:center;gap:5px;transition:all .15s;text-transform:uppercase;white-space:nowrap}
+    .abd-back:hover{border-color:var(--accent);color:var(--accent)}
+    .abd-bin{font-family:var(--display);font-size:16px;font-weight:800;color:var(--accent)}
+    .abd-qty{font-size:11px;color:var(--text-muted);margin-left:auto}
+    .abd-table-wrap{flex:1;overflow:auto;padding:0 14px 12px}
+
+    /* Error overlay */
+    #errOverlay{position:fixed;inset:0;background:rgba(10,10,16,.93);backdrop-filter:blur(10px);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center}
+    #errOverlay.on{display:flex}
+    .err-card{background:var(--surface);border:1px solid var(--red);border-radius:16px;box-shadow:0 0 60px rgba(255,61,90,.35);padding:34px 38px;max-width:410px;width:90%;text-align:center}
+    @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+    .err-card{animation:shake .44s ease}
+    .err-icon{width:54px;height:54px;border-radius:50%;background:var(--red-dim);border:2px solid var(--red);display:flex;align-items:center;justify-content:center;margin:0 auto 13px;font-size:21px;color:var(--red)}
+    .err-title{font-family:var(--display);font-size:19px;font-weight:800;color:var(--text);margin-bottom:4px}
+    .err-sub{font-size:9.5px;color:var(--text-muted);letter-spacing:.4px;margin-bottom:9px}
+    .err-code{font-family:var(--display);font-size:16px;font-weight:700;color:var(--red);margin-bottom:13px;padding:7px 14px;background:var(--red-dim);border-radius:var(--rs);display:inline-block}
+    .err-hint{font-size:10.5px;color:var(--text-muted);margin-bottom:17px}
+
+    /* Master Import Modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(10,10,16,.93);backdrop-filter:blur(10px);z-index:8000;display:none;flex-direction:column;align-items:center;justify-content:center}
+    .modal-overlay.on{display:flex}
+    .modal-card{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:28px 32px;max-width:480px;width:92%;display:flex;flex-direction:column;gap:14px}
+    .modal-title{font-family:var(--display);font-size:16px;font-weight:800;color:var(--accent);display:flex;align-items:center;gap:8px}
+    .modal-sub{font-size:10.5px;color:var(--text-muted);line-height:1.6}
+    .upload-zone{border:2px dashed var(--border2);border-radius:var(--r);padding:18px;text-align:center;cursor:pointer;transition:border-color .2s;font-size:11px;color:var(--text-muted)}
+    .upload-zone:hover{border-color:var(--accent);color:var(--accent)}
+    .upload-zone.ok{border-color:var(--green);color:var(--green)}
+    .master-status{font-size:10px;color:var(--text-muted);display:flex;flex-direction:column;gap:3px}
+    .ms-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border)}
+    .ms-ok{color:var(--green)} .ms-no{color:var(--red)}
+
+    /* DO Storage Panel */
+    .do-table-wrap{max-height:280px;overflow-y:auto;margin-top:7px}
+
+    /* Footer */
+    .sb-footer{padding:7px 13px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .st-txt{font-size:10px;color:var(--text-dim)}
+    .ver{font-size:9px;color:var(--text-muted)}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+    .sb-header{animation:fadeUp .33s ease both}
+    .stat-row{animation:fadeUp .33s .05s ease both}
+    .sb-body{animation:fadeUp .33s .1s ease both}
+    }
+    @media(max-width:768px){
+      #ui-mobile{display:block}
+      #ui-pc{display:none!important}
+      html,body{height:100%;height:100dvh;overflow:hidden}
+      :root {
+      --bg:#080a0f; --surface:#0e1117; --surface2:#131928;
+      --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+      --cyan:#00e5ff; --cyan-dim:rgba(0,229,255,0.1); --cyan-glow:rgba(0,229,255,0.25);
+      --green:#00e676; --green-dim:rgba(0,230,118,0.1);
+      --red:#ff3d5a;   --red-dim:rgba(255,61,90,0.1);
+      --amber:#ffb300; --amber-dim:rgba(255,179,0,0.1);
+      --text:#e2e8f0; --text-muted:#475569; --text-dim:#94a3b8;
+      --mono:'JetBrains Mono',monospace;
+      --display:'Syne',sans-serif;
+      --body:'Space Grotesk',sans-serif;
+      --nav-h:62px;
+
+      /* ========== PERBAIKAN SCROLL UNTUK SEMUA HALAMAN ========== */
+  .pages {
+    position: relative;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    height: 100%;
+    width: 100%;
+    touch-action: pan-y; /* Meningkatkan responsivitas scroll vertikal */
+  }
+
+  .page {
+    position: relative;
+    inset: auto;
+    display: none;
+    flex-direction: column;
+    padding: 12px 14px calc(var(--nav-h) + 20px);
+    overflow-y: visible;
+    overflow-x: visible;
+    min-height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .page.active {
+    display: flex;
+    animation: pageIn .18s ease both;
+  }
+
+  /* ========== PERBAIKAN KHUSUS HALAMAN AKSI ========== */
+  #page-aksi {
+    padding-bottom: 100px;
+    overflow-y: visible;
+    overflow-x: hidden;
+  }
+
+  /* Pastikan card tidak menyebabkan scroll issue */
+  .aksi-card {
+    margin-bottom: 10px;
+    flex-shrink: 0;
+    width: 100%;
+    overflow: visible;
+  }
+
+  /* Tombol tidak menyebabkan overflow dan tidak mengganggu scroll */
+  .aksi-card-body .btn {
+    width: 100%;
+    margin: 0;
+    padding: 12px 14px;
+    font-size: 13px;
+    box-sizing: border-box;
+    position: relative;
+    touch-action: manipulation; /* Meningkatkan responsivitas tap */
+  }
+
+  /* Section title */
+  .aksi-section-title {
+    margin: 12px 0 8px 0 !important;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    flex-shrink: 0;
+    width: 100%;
+  }
+}
+  
+  
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{
+      height:100%;height:100dvh;
+      background:var(--bg);color:var(--text);font-family:var(--body);font-size:14px;
+      overflow:hidden;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;
+    }
+    ::-webkit-scrollbar{width:3px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:rgba(0,229,255,0.15);border-radius:2px}
+
+    /* ── APP SHELL ── */
+    .app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+
+    /* ── HEADER ── */
+    .header{
+      background:var(--surface);border-bottom:1px solid var(--border);
+      padding:10px 14px;display:flex;align-items:center;justify-content:space-between;
+      flex-shrink:0;position:relative;
+    }
+    .header::after{
+      content:'';position:absolute;bottom:-1px;left:15%;right:15%;height:1px;
+      background:linear-gradient(90deg,transparent,var(--cyan),transparent);opacity:.35;
+    }
+    .brand{display:flex;align-items:center;gap:9px}
+    .brand-icon{
+      width:34px;height:34px;background:var(--cyan-dim);border:1px solid rgba(0,229,255,.3);
+      border-radius:9px;display:flex;align-items:center;justify-content:center;
+      color:var(--cyan);font-size:14px;box-shadow:0 0 12px var(--cyan-glow);
+    }
+    .brand-name{font-family:var(--display);font-size:15px;font-weight:800;line-height:1.1}
+    .brand-sub{font-size:9px;color:var(--text-muted);letter-spacing:1.4px;text-transform:uppercase}
+    .header-right{display:flex;align-items:center;gap:5px}
+    .badge{font-size:9px;padding:3px 8px;border-radius:20px;font-weight:700;white-space:nowrap}
+    .badge-idb{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,230,118,.2)}
+    .badge-idb.err{background:var(--red-dim);color:var(--red);border-color:rgba(255,61,90,.2)}
+    .badge-off{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,179,0,.2)}
+
+    /* ── STATS ── */
+    .stats{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+    .stat{padding:8px 0;text-align:center}
+    .stat:first-child{border-right:1px solid var(--border)}
+    .stat-label{font-size:8px;color:var(--text-muted);letter-spacing:1.3px;text-transform:uppercase;font-weight:600;margin-bottom:1px}
+    .stat-value{font-family:var(--display);font-size:24px;font-weight:800;line-height:1}
+    .stat-value.blue{color:#60a5fa}
+    .stat-value.green{color:var(--green)}
+
+    /* ── PAGES ── */
+    .pages{flex:1;overflow:hidden;position:relative}
+    .page{
+      position:absolute;inset:0;
+      overflow-y:auto;overflow-x:hidden;
+      padding:12px 14px calc(var(--nav-h) + 14px);
+      display:none;flex-direction:column;gap:10px;
+      -webkit-overflow-scrolling:touch;
+    }
+    .page.active{display:flex;animation:pageIn .18s ease both}
+    @keyframes pageIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav{
+      position:fixed;bottom:0;left:0;right:0;
+      height:var(--nav-h);background:var(--surface);border-top:1px solid var(--border);
+      display:grid;grid-template-columns:repeat(3,1fr);
+      z-index:100;padding-bottom:env(safe-area-inset-bottom,0px);
+    }
+    .bottom-nav::before{
+      content:'';position:absolute;top:-1px;left:15%;right:15%;height:1px;
+      background:linear-gradient(90deg,transparent,rgba(0,229,255,.3),transparent);
+    }
+    .nav-item{
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+      cursor:pointer;padding:8px 4px 6px;transition:all .15s;
+      position:relative;border:none;background:transparent;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .nav-item::before{
+      content:'';position:absolute;top:0;left:20%;right:20%;height:2px;
+      border-radius:0 0 3px 3px;background:var(--cyan);
+      transform:scaleX(0);transition:transform .2s ease;
+    }
+    .nav-item.active::before{transform:scaleX(1)}
+    .nav-icon{font-size:18px;color:var(--text-muted);transition:all .15s;line-height:1}
+    .nav-label{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text-muted);transition:color .15s}
+    .nav-item.active .nav-icon{color:var(--cyan);filter:drop-shadow(0 0 6px var(--cyan-glow))}
+    .nav-item.active .nav-label{color:var(--cyan)}
+    .nav-item:active{transform:scale(.9)}
+    .nav-badge{
+      position:absolute;top:6px;right:calc(50% - 16px);
+      background:var(--red);color:#fff;font-size:8px;font-weight:800;
+      padding:1px 5px;border-radius:10px;min-width:16px;text-align:center;line-height:1.4;
+    }
+
+    /* ── CARDS ── */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+    .card-head{
+      padding:9px 14px;background:var(--surface2);border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:8px;
+      font-size:9.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);
+    }
+    .card-head .ico{font-size:10px}
+    .card-head .c{color:var(--cyan)} .card-head .a{color:var(--amber)}
+    .card-head .g{color:var(--green)} .card-head .r{color:var(--red)}
+    .card-body{padding:13px}
+
+    /* ── FORM ── */
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .field{display:flex;flex-direction:column;gap:4px}
+    .label{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted)}
+    .input,.select{
+      background:rgba(0,0,0,.35);border:1px solid var(--border2);border-radius:10px;
+      color:var(--text);font-family:var(--body);font-size:13.5px;font-weight:600;
+      padding:10px 12px;width:100%;outline:none;transition:all .2s;
+      text-align:center;-webkit-appearance:none;appearance:none;
+    }
+    .input:focus,.select:focus{border-color:rgba(0,229,255,.45);box-shadow:0 0 0 3px rgba(0,229,255,.07)}
+    .select option{background:#0e1117}
+    .scan-input{
+      background:rgba(0,0,0,.4);border:1.5px solid rgba(0,230,118,.2);border-radius:10px;
+      color:var(--text);font-family:var(--mono);font-size:13px;font-weight:600;
+      padding:13px 16px;width:100%;outline:none;transition:all .2s;
+    }
+    .scan-input::placeholder{color:#2d3748;font-size:12px}
+    @keyframes scanPulse{
+      0%,100%{box-shadow:0 0 0 3px rgba(0,230,118,.08)}
+      50%{box-shadow:0 0 0 5px rgba(0,230,118,.05),0 0 18px rgba(0,230,118,.06)}
+    }
+    .scan-input:focus{border-color:var(--green);animation:scanPulse 2s infinite}
+
+    /* ── BUTTONS ── */
+    .btn{
+      border:none;border-radius:10px;cursor:pointer;font-family:var(--body);font-size:12.5px;font-weight:700;
+      letter-spacing:.4px;padding:12px 14px;display:flex;align-items:center;justify-content:center;gap:7px;
+      width:100%;transition:all .12s;text-transform:uppercase;white-space:nowrap;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .btn:active{transform:scale(.95)}
+    .btn-cyan  {background:var(--cyan-dim); border:1px solid rgba(0,229,255,.25);color:var(--cyan)}
+    .btn-green {background:var(--green-dim);border:1px solid rgba(0,230,118,.25);color:var(--green)}
+    .btn-amber {background:var(--amber-dim);border:1px solid rgba(255,179,0,.25); color:var(--amber)}
+    .btn-red   {background:var(--red-dim);  border:1px solid rgba(255,61,90,.25); color:var(--red)}
+    .btn-ghost {background:rgba(255,255,255,.03);border:1px solid var(--border2);color:var(--text-dim)}
+    .btn-sm{padding:9px 12px;font-size:11.5px}
+    .grid2-btn{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .gap8{display:flex;flex-direction:column;gap:8px}
+    .mt10{margin-top:10px}
+
+    /* ── SESI ── */
+    .sesi-body{display:flex;align-items:center;gap:12px;padding-bottom:0;border-bottom:none;margin-bottom:0}
+    .btn-reset-sesi{
+      flex-shrink:0;align-self:center;
+      background:var(--amber-dim);border:1px solid rgba(255,179,0,.25);color:var(--amber);
+      border-radius:8px;cursor:pointer;font-family:var(--body);font-size:10px;font-weight:700;
+      letter-spacing:.4px;padding:6px 10px;display:flex;align-items:center;gap:5px;
+      text-transform:uppercase;white-space:nowrap;transition:all .12s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .btn-reset-sesi:active{transform:scale(.93);background:rgba(255,179,0,.18)}
+    .sesi-num{
+      font-family:var(--display);font-size:58px;font-weight:800;color:var(--amber);
+      line-height:1;min-width:78px;text-align:center;text-shadow:0 0 24px rgba(255,179,0,.3);flex-shrink:0;
+    }
+    @keyframes numPop{0%{transform:scale(1.35);color:#fff;text-shadow:0 0 32px #fff}100%{transform:scale(1);color:var(--amber);text-shadow:0 0 24px rgba(255,179,0,.3)}}
+    .sesi-num.pop{animation:numPop .22s ease}
+    .sesi-meta{flex:1;display:flex;flex-direction:column;gap:6px}
+    .sesi-row{display:flex;justify-content:space-between;align-items:center}
+    .sesi-key{font-size:9px;color:var(--text-muted);letter-spacing:.8px;text-transform:uppercase;font-weight:600}
+    .sesi-val{font-size:12px;font-weight:700;color:var(--text-dim)}
+    .sesi-val.hi{color:var(--green)}
+    .sesi-badge{
+      font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;margin-left:auto;
+      background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,179,0,.2);transition:all .3s;
+    }
+    .sesi-badge.ok{background:var(--green-dim);color:var(--green);border-color:rgba(0,230,118,.2)}
+
+    /* ── TABLE ── */
+    .table-wrap{overflow-x:auto;overflow-y:auto;max-height:100%;-webkit-overflow-scrolling:touch;border-radius:8px}
+    .dtable{width:100%;border-collapse:collapse;font-size:11.5px;min-width:420px}
+    .dtable thead{position:sticky;top:0;z-index:5}
+    .dtable thead th{
+      background:var(--surface2);border:1px solid var(--border);
+      color:var(--text-muted);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+      padding:8px 10px;text-align:left;white-space:nowrap;
+    }
+    .dtable tbody td{
+      border:1px solid var(--border);padding:9px 10px;color:var(--text-dim);background:var(--surface);
+      vertical-align:middle;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .dtable tbody tr:active td{background:rgba(0,229,255,.03)}
+    .row-empty td{text-align:center;padding:32px 10px;color:var(--text-muted);font-style:italic}
+    @keyframes rowIn{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
+    .row-new td{animation:rowIn .25s ease}
+    .td-art{font-weight:700!important;color:var(--text)!important;font-family:var(--mono)!important;font-size:11px!important}
+    .td-bin{color:var(--amber)!important;font-weight:700!important;text-align:center!important}
+    .td-cat,.td-del{text-align:center!important}
+    .td-del{min-width:55px!important}
+    .btn-del{
+      background:var(--red-dim);border:1px solid rgba(255,61,90,.2);color:var(--red);
+      border-radius:7px;cursor:pointer;padding:6px 13px;font-size:13px;transition:all .12s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .btn-del:active{background:rgba(255,61,90,.2);transform:scale(.93)}
+
+    /* ── INFO / AKSI ── */
+    .info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}
+    .info-row:last-child{border-bottom:none}
+    .info-key{color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+    .info-val{font-weight:700;color:var(--text)}
+    .ms-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px}
+    .ms-ok{color:var(--green);font-weight:700}
+    .ms-no{color:var(--red);font-weight:700}
+    .sec-label{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#1e293b;display:flex;align-items:center;gap:8px;margin:4px 0}
+    .sec-label::before,.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+    /* ── FRAMELESS SCAN SECTION ── */
+    .scan-section{display:flex;flex-direction:column;gap:0;padding:0}
+    .scan-divider{height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent);margin:4px 0}
+    .sesi-section{display:flex;flex-direction:column;gap:10px;padding:0}
+    .sesi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+    .sesi-title{font-size:9.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+
+    /* ── INLINE TABLE (di halaman scan, auto-fit tanpa scroll horizontal) ── */
+    .inline-table-head{
+      display:flex;justify-content:space-between;align-items:center;
+      font-size:9.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);
+      margin-bottom:6px;
+    }
+    .inline-table-wrap{
+      width:calc(100% + 28px);
+      margin-left:-14px;margin-right:-14px;
+      overflow-x:hidden;
+      overflow-y:auto;
+      max-height:320px;
+      border-top:1px solid var(--border);
+      border-bottom:1px solid var(--border);
+    }
+    .ftable{width:100%;border-collapse:collapse;table-layout:auto}
+    .ftable thead{position:sticky;top:0;z-index:10}
+    .ftable thead th{
+      background:var(--surface2);
+      border-bottom:2px solid var(--border2);
+      border-right:1px solid var(--border);
+      color:var(--text-muted);font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+      padding:10px 8px;white-space:nowrap;
+    }
+    .ftable thead th.th-center{text-align:center}
+    .ftable thead th:last-child{border-right:none}
+    .ftable tbody td{
+      border-bottom:1px solid var(--border);
+      border-right:1px solid var(--border);
+      padding:10px 8px;
+      color:var(--text-dim);background:var(--surface);
+      vertical-align:middle;font-size:12.5px;
+    }
+    .ftable tbody td:last-child{border-right:none}
+    .ftable tbody tr:last-child td{border-bottom:none}
+    .ftable tbody tr:active td{background:rgba(0,229,255,.04)}
+    .ftable .td-art{
+      font-weight:700;color:var(--text);
+      font-family:var(--mono);font-size:11.5px;
+      white-space:nowrap;
+    }
+    .ftable .td-desc{
+      white-space:normal;word-break:break-word;line-height:1.4;font-size:12px;
+    }
+    .ftable .td-cat{text-align:center;white-space:nowrap;color:var(--text-dim)}
+    .ftable .td-bin{text-align:center;white-space:nowrap;color:var(--amber);font-weight:700}
+    .ftable .td-del{text-align:center;white-space:nowrap;width:1%}
+    .ftable .row-empty td{
+      text-align:center;padding:28px 8px;color:var(--text-muted);
+      font-style:italic;font-size:12px;border-right:none;
+    }
+    .ftable .row-empty td{text-align:center;padding:22px 8px;color:var(--text-muted);font-style:italic;font-size:11px}
+    @keyframes rowIn{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none}}
+    .ftable .row-new td{animation:rowIn .22s ease}
+
+    /* ── BIN CEKLIS ── */
+    .bin-check{
+      width:22px;height:22px;border-radius:6px;
+      border:2px solid var(--border2);background:rgba(0,0,0,.3);
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;transition:all .15s;flex-shrink:0;margin:auto;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .bin-check.checked{
+      background:var(--green);border-color:var(--green);
+      box-shadow:0 0 8px rgba(0,230,118,.4);
+    }
+    .bin-check.checked::after{
+      content:'✓';color:#000;font-size:13px;font-weight:900;line-height:1;
+    }
+    .td-check{text-align:center!important;padding:8px 6px!important;width:32px!important}
+    tr.bin-checked td{background:rgba(0,230,118,.04)!important}
+
+    /* ── BIN DETAIL PANEL ── */
+    #binDetailPanel{
+      position:fixed;inset:0;z-index:500;
+      display:none;flex-direction:column;justify-content:flex-end;
+    }
+    #binDetailPanel.open{display:flex}
+    .bdp-backdrop{
+      position:absolute;inset:0;
+      background:rgba(8,10,15,0.82);
+      /* HAPUS backdrop-filter:blur — penyebab freeze scroll di mobile */
+    }
+    .bdp-sheet{
+      position:relative;z-index:1;
+      background:var(--surface);
+      border-radius:20px 20px 0 0;
+      border-top:1px solid var(--border2);
+      max-height:75dvh;
+      display:flex;flex-direction:column;
+      transform:translateY(100%);
+      transition:transform 0.26s cubic-bezier(0.32,0.72,0,1);
+      /* will-change agar GPU layer dibuat di awal, bukan saat scroll */
+      will-change:transform;
+    }
+    #binDetailPanel.open .bdp-sheet{transform:translateY(0)}
+    /* Setelah animasi selesai, lepas will-change agar tidak memakan GPU terus */
+    #binDetailPanel.settled .bdp-sheet{will-change:auto}
+    .bdp-handle{
+      width:36px;height:4px;border-radius:2px;
+      background:var(--border2);margin:10px auto 0;flex-shrink:0;
+    }
+    .bdp-head{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;
+    }
+    .bdp-bin-name{
+      font-family:var(--display);font-size:20px;font-weight:800;
+      color:var(--cyan);letter-spacing:.5px;
+    }
+    .bdp-bin-qty{font-size:11px;color:var(--text-muted);margin-top:1px}
+    .bdp-close{
+      background:var(--red-dim);border:1px solid rgba(255,61,90,.2);color:var(--red);
+      border-radius:8px;cursor:pointer;padding:7px 12px;font-size:14px;
+      -webkit-tap-highlight-color:transparent;transition:all .12s;
+    }
+    .bdp-close:active{transform:scale(.93)}
+    .bdp-table-wrap{
+      flex:1;
+      overflow-y:scroll;   /* scroll bukan auto — lebih responsif di iOS */
+      overflow-x:auto;
+      /* touch-action: pan-y — beritahu browser bahwa ini scroll vertikal,
+         mencegah event hijack oleh parent */
+      touch-action:pan-y pan-x;
+      overscroll-behavior:contain; /* cegah scroll bocor ke parent */
+      padding-bottom:env(safe-area-inset-bottom,0px);
+    }
+    .bdp-table-wrap .ftable{table-layout:auto;width:max-content;min-width:100%}
+    .bdp-table-wrap .ftable thead th{white-space:nowrap}
+    .bdp-table-wrap .ftable tbody td{white-space:nowrap}
+
+    /* ── CAMERA ── */
+    #reader{display:none;border-radius:10px;overflow:hidden;border:1px solid rgba(0,229,255,.2);margin-top:10px}
+    #reader__dashboard{display:none!important}
+
+    /* ── OVERLAYS ── */
+    .overlay{
+      position:fixed;inset:0;background:rgba(8,10,15,.96);
+      backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+      z-index:9000;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;
+    }
+    .overlay.on{display:flex}
+    .err-card{
+      background:var(--surface);border:1px solid var(--red);border-radius:20px;
+      box-shadow:0 0 60px rgba(255,61,90,.2);padding:28px 22px;max-width:340px;width:100%;text-align:center;
+    }
+    @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+    .err-card{animation:shake .42s ease}
+    .err-icon{width:52px;height:52px;border-radius:50%;background:var(--red-dim);border:2px solid var(--red);display:flex;align-items:center;justify-content:center;margin:0 auto 13px;font-size:21px;color:var(--red)}
+    .err-title{font-family:var(--display);font-size:19px;font-weight:800;margin-bottom:5px}
+    .err-sub{font-size:10px;color:var(--text-muted);margin-bottom:9px}
+    .err-code{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--red);margin-bottom:14px;padding:7px 13px;background:var(--red-dim);border-radius:8px;display:inline-block;word-break:break-all}
+    .err-hint{font-size:11px;color:var(--text-muted);margin-bottom:16px}
+    .modal-card{
+      background:var(--surface);border:1px solid rgba(0,229,255,.18);border-radius:20px;
+      padding:22px 18px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:13px;
+      max-height:88vh;overflow-y:auto;
+    }
+    .modal-title{font-family:var(--display);font-size:16px;font-weight:800;color:var(--cyan);display:flex;align-items:center;gap:9px}
+    .modal-sub{font-size:11px;color:var(--text-muted);line-height:1.6}
+    .upload-zone{border:2px dashed var(--border2);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;font-size:12px;color:var(--text-muted)}
+    .upload-zone:active{border-color:var(--cyan);color:var(--cyan)}
+    .upload-zone.ok{border-color:var(--green);color:var(--green)}
+
+    /* ── PAGE ALL BIN (mobile) ── */
+    .m-allbin-stats{
+      display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+      padding:0;
+    }
+    .m-abs-cell{
+      background:var(--surface);border:1px solid var(--border);border-radius:12px;
+      padding:10px 8px;text-align:center;
+    }
+    .m-abs-label{font-size:8px;color:var(--text-muted);letter-spacing:1px;text-transform:uppercase;font-weight:700;margin-bottom:3px}
+    .m-abs-value{font-family:var(--display);font-size:22px;font-weight:800;line-height:1}
+    .m-abs-value.c-cyan{color:var(--cyan)}
+    .m-abs-value.c-green{color:var(--green)}
+    .m-abs-value.c-amber{color:var(--amber)}
+    .m-bin-search-wrap{position:relative}
+    .m-bin-search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:11px;pointer-events:none}
+    .m-bin-search{
+      background:var(--surface);border:1px solid var(--border2);border-radius:10px;
+      color:var(--text);font-family:var(--mono);font-size:13px;font-weight:600;
+      padding:11px 12px 11px 34px;width:100%;outline:none;transition:border-color .2s;
+    }
+    .m-bin-search:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,229,255,.06)}
+    .m-allbin-list{display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+    .m-bin-row{
+      display:flex;align-items:center;gap:10px;padding:11px 14px;
+      background:var(--surface);border-bottom:1px solid var(--border);
+      cursor:pointer;transition:background .12s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .m-bin-row:last-child{border-bottom:none}
+    .m-bin-row:active{background:rgba(0,229,255,.05)}
+    .m-bin-row.checked-row{background:rgba(0,230,118,.05)}
+    .m-bin-chk{
+      width:22px;height:22px;border-radius:6px;flex-shrink:0;
+      border:2px solid var(--border2);background:rgba(0,0,0,.3);
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;transition:all .15s;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .m-bin-chk.checked{background:var(--green);border-color:var(--green);box-shadow:0 0 8px rgba(0,230,118,.35)}
+    .m-bin-chk.checked::after{content:'✓';color:#000;font-size:12px;font-weight:900;line-height:1}
+    .m-bin-info{flex:1;min-width:0}
+    .m-bin-name{font-family:var(--display);font-size:14px;font-weight:800;color:var(--text);letter-spacing:.3px}
+    .m-bin-meta{font-size:10px;color:var(--text-muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .m-bin-qty{
+      font-family:var(--display);font-size:22px;font-weight:800;color:var(--amber);
+      min-width:42px;text-align:right;flex-shrink:0;
+    }
+    .m-bin-lokasi{font-size:9px;padding:1px 7px;border-radius:10px;font-weight:700;white-space:nowrap;flex-shrink:0}
+    .m-bin-lokasi.gudang{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.2)}
+    .m-bin-lokasi.display{background:rgba(185,128,255,.1);color:#b980ff;border:1px solid rgba(185,128,255,.2)}
+    .m-bin-lokasi.riject{background:rgba(255,61,90,.1);color:var(--red);border:1px solid rgba(255,61,90,.2)}
+    .m-bin-empty{text-align:center;padding:40px 20px;color:var(--text-muted);font-size:12px;font-style:italic}
+    .m-check-summary{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 14px;background:rgba(0,230,118,.07);border:1px solid rgba(0,230,118,.2);border-radius:10px;
+      font-size:11px;
+    }
+    .m-check-summary .txt{color:var(--green);font-weight:700}
+    .m-check-summary .clr{color:var(--text-muted);font-size:10px;cursor:pointer;padding:4px 8px;border-radius:6px;background:rgba(0,230,118,.1);border:none;font-family:var(--body);font-weight:700}
+    .m-check-summary .clr:active{background:rgba(0,230,118,.2)}
+    .m-allbin-input{
+      width:24px;height:24px;border-radius:6px;flex-shrink:0;
+      border:2px solid var(--border2);background:rgba(0,0,0,.3);
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;transition:all .15s;
+      font-size:13px;color:#000;font-weight:900;
+      -webkit-tap-highlight-color:transparent;
+    }
+
+    /* ── PAGE AKSI (mobile) ── */
+    .aksi-section-title{
+      font-size:9px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;
+      color:var(--text-muted);display:flex;align-items:center;gap:8px;margin:0;
+    }
+    .aksi-section-title::before,.aksi-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+    .aksi-card{
+      background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;
+    }
+    .aksi-card-head{
+      padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:8px;
+      font-size:9.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-muted);
+    }
+    .aksi-card-body{padding:13px;display:flex;flex-direction:column;gap:9px}
+    }
+  </style>
+</head>
+
+<div id="ui-pc">
+<!-- ERROR OVERLAY -->
+<div id="errOverlay" style="display:none;flex-direction:column;align-items:center;justify-content:center">
+  <div class="err-card">
+    <div class="err-icon"><i class="fas fa-ban"></i></div>
+    <div class="err-title">SISTEM TERKUNCI</div>
+    <div class="err-sub">BARCODE / ARTIKEL TIDAK TERDAFTAR</div>
+    <div class="err-code" id="errCode">—</div>
+    <div class="err-hint">Periksa data master, lalu lanjutkan.</div>
+    <button class="btn btn-red" onclick="unlockSystem()">
+      <i class="fas fa-unlock-alt"></i> BUKA KUNCI & LANJUTKAN
+    </button>
+  </div>
+</div>
+
+<!-- MASTER IMPORT MODAL -->
+<div class="modal-overlay" id="masterModal">
+  <div class="modal-card">
+    <div class="modal-title"><i class="fas fa-database"></i> Import Data Master</div>
+    <div class="modal-sub">
+      Upload file <strong style="color:var(--accent)">MASTER.json</strong> yang berisi data barcode, produk, dan ukuran.<br>
+      File hanya disimpan di browser (IndexedDB) — tidak dikirim ke mana pun.<br><br>
+      Format JSON yang dibutuhkan:
+      <pre style="background:var(--bg);padding:8px;border-radius:6px;font-size:10px;margin-top:6px;color:var(--text-dim);overflow:auto">{ "bc": [[...]], "pr": [[...]], "sz": [[...]] }</pre>
+    </div>
+    <div class="master-status" id="masterStatus">
+      <div class="ms-row"><span>MASTER_BARCODE</span><span id="msBc" class="ms-no">Belum dimuat</span></div>
+      <div class="ms-row"><span>MASTER_PRODUK</span><span id="msPr" class="ms-no">Belum dimuat</span></div>
+      <div class="ms-row"><span>SIZE</span><span id="msSz" class="ms-no">Belum dimuat</span></div>
+    </div>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileMaster').click()">
+      <i class="fas fa-file-import" style="font-size:20px;display:block;margin-bottom:6px"></i>
+      Klik untuk pilih file MASTER.json
+    </div>
+    <input type="file" id="fileMaster" style="display:none" accept=".json" onchange="importMasterFile(event)">
+    <div class="g2">
+      <button class="btn btn-ghost" onclick="closeMasterModal()"><i class="fas fa-times"></i> Tutup</button>
+      <button class="btn btn-cyan" onclick="document.getElementById('fileMaster').click()"><i class="fas fa-upload"></i> Upload JSON</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div class="app-shell">
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+
+    <div class="sb-header">
+      <div class="brand-icon"><i class="fas fa-bolt"></i></div>
+      <div>
+        <div class="brand-name">LEAGUE SCAN</div>
+        <div class="brand-sub">Offline Mode</div>
+      </div>
+      <span class="idb-badge" id="idbBadge">IDB ✓</span>
+      <span class="offline-badge">OFFLINE</span>
+    </div>
+
+    <!-- Stat strip -->
+    <div class="stat-row">
+      <div class="stat-cell c-blue">
+        <div class="stat-label">Total Scan</div>
+        <div class="stat-value" id="totalAllQty">0</div>
+      </div>
+      <div class="stat-cell c-green">
+        <div class="stat-label">BIN Qty</div>
+        <div class="stat-value" id="qtyCount">0</div>
+      </div>
+    </div>
+
+    <div class="sb-body">
+
+      <!-- ① SCAN INPUT -->
+      <div class="block">
+        <div class="block-head"><i class="fas fa-crosshairs ci"></i> Scan Input</div>
+        <div class="block-body">
+          <div class="fg2">
+            <div class="fw">
+              <label class="fl">BIN</label>
+              <input type="text" id="bin" class="fi" placeholder="BIN-01" autocomplete="off">
+            </div>
+            <div class="fw">
+              <label class="fl">Lokasi</label>
+              <select id="lokasi" class="fs">
+                <option value="Gudang">Gudang</option>
+                <option value="Display">Display</option>
+                <option value="Riject">Riject</option>
+              </select>
+            </div>
+          </div>
+          <div class="fw">
+            <label class="fl">Barcode / Artikel</label>
+            <input type="text" id="inp" class="fi scan"
+                   placeholder="Scan atau ketik → Enter"
+                   autocomplete="off" inputmode="text" enterkeyhint="done">
+          </div>
+        </div>
+      </div>
+
+      <!-- ② SESI SCAN -->
+      <div class="block">
+        <div class="block-head">
+          <i class="fas fa-hashtag ai"></i> Sesi Scan
+          <span id="sesiStatusBadge" style="margin-left:auto;">AKTIF</span>
+        </div>
+        <div class="sesi-display">
+          <div class="sesi-num" id="sesiNum">0</div>
+          <div class="sesi-meta">
+            <div class="sesi-mr"><span class="sesi-ml">BIN</span><span class="sesi-mv" id="sesiBinDisplay">—</span></div>
+            <div class="sesi-mr"><span class="sesi-ml">Mulai</span><span class="sesi-mv" id="sesiMulai">—</span></div>
+            <div class="sesi-mr"><span class="sesi-ml">Total Sesi</span><span class="sesi-mv hi" id="sesiTotalCount">0</span></div>
+          </div>
+        </div>
+        <div class="sesi-actions">
+          <div class="sesi-shortcut">Shortcut: <span class="kbd">\</span></div>
+          <button id="btnResetSesi" class="btn btn-amber" onclick="resetSesi()">
+            <i class="fas fa-redo-alt"></i> RESET SESI
+          </button>
+        </div>
+      </div>
+
+      <!-- ③ KAMERA -->
+      <div class="block">
+        <button class="coll-hd" id="camBtn" onclick="toggleCamSection()">
+          <i class="fas fa-camera ci"></i> Mode Kamera
+          <i class="fas fa-chevron-down chev"></i>
+        </button>
+        <div class="coll-bd" id="camBody">
+          <button id="btnKamera" class="btn btn-cyan" onclick="toggleScanner()">
+            <i class="fas fa-camera"></i> AKTIFKAN KAMERA
+          </button>
+          <div id="reader"></div>
+        </div>
+      </div>
+
+      <!-- ④ CARI DO LOKAL -->
+      <div class="block">
+        <div class="block-head"><i class="fas fa-search ci"></i> Cari Data DO</div>
+        <div class="block-body">
+          <div class="frow">
+            <input type="text" id="searchDoInput" class="fi"
+                   placeholder="No. DO / keyword…"
+                   onkeypress="if(event.key==='Enter')cariDataDO()">
+            <button class="btn btn-cyan btn-ico" onclick="cariDataDO()">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+          <div id="doResult" style="margin-top:6px;font-size:10px;color:var(--text-muted)"></div>
+        </div>
+      </div>
+
+      <!-- ⑤ TRANSFER & EXPORT -->
+      <div class="block">
+        <button class="coll-hd" onclick="toggleSection('trBody',this)">
+          <i class="fas fa-paper-plane ci"></i> Transfer & Export
+          <i class="fas fa-chevron-down chev"></i>
+        </button>
+        <div class="coll-bd" id="trBody">
+          <div class="vstack">
+            <button class="btn btn-purple" onclick="jalankanProsesDO()">
+              <i class="fas fa-truck"></i> Transfer SCAN ke DO
+            </button>
+          </div>
+          <div class="div"></div>
+          <div class="fl" style="margin-bottom:5px">Download Excel</div>
+          <div class="g2">
+            <button class="btn btn-green" onclick="exportExcelScan()">
+              <i class="fas fa-file-excel"></i> SCAN
+            </button>
+            <button class="btn btn-ghost" onclick="exportExcelDO()">
+              <i class="fas fa-file-excel"></i> DO
+            </button>
+          </div>
+          <div class="div"></div>
+          <div class="g2">
+            <button class="btn btn-ghost" onclick="downloadOfflineBackup()">
+              <i class="fas fa-download"></i> Backup
+            </button>
+            <button class="btn btn-ghost" onclick="document.getElementById('fileRestore').click()">
+              <i class="fas fa-upload"></i> Restore
+            </button>
+          </div>
+          <input type="file" id="fileRestore" style="display:none" accept=".txt,.json" onchange="restoreOfflineBackup(event)">
+        </div>
+      </div>
+
+      <!-- ⑥ MASTER DATA -->
+      <div class="block">
+        <button class="coll-hd" onclick="toggleSection('masterBody',this)">
+          <i class="fas fa-database ci"></i> Master Data
+          <i class="fas fa-chevron-down chev"></i>
+        </button>
+        <div class="coll-bd" id="masterBody">
+          <div class="master-status" id="masterStatusSb">
+            <div class="ms-row"><span>MASTER_BARCODE</span><span id="sbBc" class="ms-no">—</span></div>
+            <div class="ms-row"><span>MASTER_PRODUK</span><span id="sbPr" class="ms-no">—</span></div>
+            <div class="ms-row" style="border:none"><span>SIZE</span><span id="sbSz" class="ms-no">—</span></div>
+          </div>
+          <div class="div"></div>
+          <div class="g2">
+            <button class="btn btn-cyan" onclick="openMasterModal()">
+              <i class="fas fa-file-import"></i> Import
+            </button>
+            <button class="btn btn-ghost" onclick="exportMasterJSON()">
+              <i class="fas fa-file-export"></i> Export
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ⑦ MANAJEMEN HAPUS -->
+      <div class="block">
+        <button class="coll-hd" onclick="toggleSection('hapusBody',this)">
+          <i class="fas fa-trash-alt" style="color:var(--red)"></i> Manajemen Hapus
+          <i class="fas fa-chevron-down chev"></i>
+        </button>
+        <div class="coll-bd" id="hapusBody">
+          <div class="vstack">
+            <button class="btn btn-amber" onclick="prosesHapusBinSpesifik()">
+              <i class="fas fa-filter"></i> Bersihkan Satu BIN
+            </button>
+            <button class="btn btn-red" onclick="resetDataDO()">
+              <i class="fas fa-trash-alt"></i> Reset Data DO
+            </button>
+            <button class="btn btn-ghost" onclick="konfirmasiHapusSemua()">
+              <i class="fas fa-bomb"></i> Kosongkan Total
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /sb-body -->
+
+    <div class="sb-footer">
+      <div class="st-txt" style="color:var(--amber)"><i class="fas fa-plane-slash" style="margin-right:4px;font-size:9px"></i>OFFLINE</div>
+      <div class="ver">v5.0-OFFLINE</div>
+    </div>
+
+  </aside>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="main-content">
+    <div class="topbar">
+      <span class="tb-lbl">BIN Aktif</span>
+      <span class="tb-bin" id="targetBin">—</span>
+      <div class="tb-sep"></div>
+      <button class="btn-allbin" onclick="toggleAllBin()" id="btnAllBin">
+        <i class="fas fa-th-large"></i> ALL BIN
+      </button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="dtable" id="mainTable">
+        <thead><tr id="tableHeader"></tr></thead>
+        <tbody id="tableBody">
+          <tr class="row-empty"><td colspan="13">Masukkan BIN untuk melihat data scan</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- ALL BIN OVERLAY (fixed, di luar table-wrap agar scroll bebas) -->
+<div id="allBinOverlay" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:100;flex-direction:column">
+  <div class="ab-toolbar">
+    <div class="ab-title"><i class="fas fa-th-large"></i> Semua BIN Lokal</div>
+    <div class="ab-search-wrap">
+      <i class="fas fa-search ab-search-icon"></i>
+      <input type="text" id="abSearch" class="ab-search" placeholder="Filter BIN…" oninput="renderAllBinCards()">
+    </div>
+    <div id="abTotal" class="ab-total"></div>
+    <button class="ab-close" onclick="toggleAllBin()"><i class="fas fa-times"></i></button>
+  </div>
+  <div id="abCards" class="ab-cards"></div>
+</div>
+
+<!-- ALL BIN DETAIL PANEL -->
+<div id="abDetail">
+  <div class="abd-toolbar">
+    <button class="abd-back" onclick="closeDetail()"><i class="fas fa-arrow-left"></i> Kembali</button>
+    <span class="abd-bin" id="abdBinName">—</span>
+    <span class="abd-qty" id="abdQtyLabel"></span>
+  </div>
+  <div class="abd-table-wrap">
+    <table class="dtable">
+      <thead><tr id="abdHeader"></tr></thead>
+      <tbody id="abdBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ════════════════════════════ SCRIPT ════════════════════════════ -->
+</div>
+
+<div id="ui-mobile">
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="brand">
+      <div class="brand-icon"><i class="fas fa-bolt"></i></div>
+      <div>
+        <div class="brand-name">LEAGUE SCAN</div>
+        <div class="brand-sub">Offline Mode</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="badge badge-idb" id="m_idbBadge">IDB ✓</span>
+      <span class="badge badge-off">OFFLINE</span>
+    </div>
+  </div>
+
+  <!-- STATS (hanya tampil di halaman SCAN) -->
+  <div class="stats" id="m_statsStrip">
+    <div class="stat"><div class="stat-label">Total Scan</div><div class="stat-value blue" id="m_totalAllQty">0</div></div>
+    <div class="stat"><div class="stat-label">BIN Qty</div><div class="stat-value green" id="m_qtyCount">0</div></div>
+  </div>
+
+  <!-- PAGES -->
+  <div class="pages">
+
+    <!-- PAGE: SCAN -->
+    <div class="page active" id="page-scan">
+
+      <!-- SCAN INPUT — tanpa frame -->
+      <div class="scan-section">
+        <div class="grid2">
+          <div class="field">
+            <input type="text" id="m_bin" class="input" placeholder="BIN-01"
+                   autocomplete="off" autocapitalize="characters" spellcheck="false">
+          </div>
+          <div class="field">
+            <select id="m_lokasi" class="select">
+              <option value="Gudang">Gudang</option>
+              <option value="Display">Display</option>
+              <option value="Riject">Riject</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:8px">
+          <input type="text" id="m_inp" class="scan-input"
+                 placeholder="Scan atau ketik → Enter"
+                 autocomplete="off" inputmode="text" enterkeyhint="done" spellcheck="false">
+        </div>
+        <div id="m_reader"></div>
+      </div>
+
+      <div class="scan-divider"></div>
+
+      <!-- SESI SCAN — tanpa frame -->
+      <div class="sesi-section">
+        <div class="sesi-body">
+          <div class="sesi-num" id="m_sesiNum">0</div>
+          <div class="sesi-meta">
+            <div class="sesi-row"><span class="sesi-key">BIN</span><span class="sesi-val" id="m_sesiBinDisplay">—</span></div>
+            <div class="sesi-row"><span class="sesi-key">Mulai</span><span class="sesi-val" id="m_sesiMulai">—</span></div>
+            <div class="sesi-row"><span class="sesi-key">Total</span><span class="sesi-val hi" id="m_sesiTotalCount">0</span></div>
+          </div>
+          <button class="btn-reset-sesi" onclick="m_resetSesi()"><i class="fas fa-redo-alt"></i> Reset</button>
+        </div>
+      </div>
+
+      <div class="scan-divider"></div>
+
+      <!-- TABEL DATA -->
+      <div class="inline-table-wrap">
+        <span id="m_binLabel" style="display:none"></span>
+        <table class="ftable" id="m_mainTable">
+          <thead>
+            <tr>
+              <th>Article</th>
+              <th>Description</th>
+              <th class="th-center">Cat</th>
+              <th class="th-center">BIN</th>
+              <th class="th-center"></th>
+            </tr>
+          </thead>
+          <tbody id="m_tableBody">
+            <tr class="row-empty"><td colspan="5">Masukkan BIN untuk melihat data</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /page-scan -->
+
+    <!-- PAGE: AKSI -->
+    <div class="page" id="page-aksi">
+      <div class="aksi-section-title">Export & Download</div>
+      <div class="aksi-card">
+        <div class="aksi-card-head"><i class="fas fa-file-excel" style="color:var(--green)"></i> Download Excel</div>
+        <div class="aksi-card-body">
+          <button class="btn btn-green" onclick="m_exportExcelScan()">
+            <i class="fas fa-file-excel"></i> Download Excel SCAN
+          </button>
+        </div>
+      </div>
+
+      <!-- CSV Export Section -->
+  <div class="aksi-card" style="margin-top: 8px;">
+    <div class="aksi-card-head"><i class="fas fa-file-csv" style="color:var(--cyan)"></i> Download CSV</div>
+    <div class="aksi-card-body">
+      <button class="btn btn-cyan" onclick="m_exportCSVScan()">
+        <i class="fas fa-file-csv"></i> Download CSV SCAN
+      </button>
+    </div>
+  </div>
+
+  <!-- Backup & Restore Section -->
+  <div class="aksi-section-title" style="margin-top: 12px;">💾 BACKUP & RESTORE</div>
+  <div class="aksi-card">
+    <div class="aksi-card-head"><i class="fas fa-archive" style="color:var(--amber)"></i> Backup Data</div>
+    <div class="aksi-card-body">
+      <button class="btn btn-amber" onclick="m_downloadOfflineBackup()">
+        <i class="fas fa-download"></i> Backup Semua Data
+      </button>
+      <button class="btn btn-ghost" onclick="document.getElementById('m_fileRestore').click()" style="margin-top: 10px;">
+        <i class="fas fa-upload"></i> Restore Data
+      </button>
+      <input type="file" id="m_fileRestore" style="display:none" accept=".txt,.json" onchange="m_restoreOfflineBackup(event)">
+    </div>
+  </div>
+
+      <div class="aksi-section-title" style="margin-top:4px">Master Data</div>
+      <div class="aksi-card">
+        <div class="aksi-card-head"><i class="fas fa-database" style="color:var(--cyan)"></i> Master Data</div>
+        <div class="aksi-card-body">
+          <button class="btn btn-cyan" onclick="m_openMasterModal()">
+            <i class="fas fa-database"></i> Import / Export Master
+          </button>
+          <div style="display:flex;flex-direction:column;gap:3px;padding:8px 0 2px;font-size:10px;color:var(--text-muted)">
+            <div class="ms-row"><span>MASTER_BARCODE</span><span id="aksi_msBc" class="ms-no">—</span></div>
+            <div class="ms-row"><span>MASTER_PRODUK</span><span id="aksi_msPr" class="ms-no">—</span></div>
+            <div class="ms-row" style="border:none"><span>SIZE</span><span id="aksi_msSz" class="ms-no">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="aksi-section-title" style="margin-top:4px">Manajemen Hapus</div>
+      <div class="aksi-card">
+        <div class="aksi-card-head"><i class="fas fa-trash-alt" style="color:var(--red)"></i> Hapus Data</div>
+        <div class="aksi-card-body">
+          <button class="btn btn-amber" onclick="m_hapusSatuBin()">
+            <i class="fas fa-filter"></i> Bersihkan Satu BIN
+          </button>
+          <button class="btn btn-red" style="opacity:.9" onclick="m_kosongkanSemua()">
+            <i class="fas fa-bomb"></i> Hapus Total
+          </button>
+        </div>
+      </div>
+    </div><!-- /page-aksi -->
+
+    <!-- PAGE: ALL BIN -->
+    <div class="page" id="page-allbin">
+
+      <!-- Statistik ALL BIN -->
+      <div class="m-allbin-stats">
+        <div class="m-abs-cell">
+          <div class="m-abs-label">Total BIN</div>
+          <div class="m-abs-value c-cyan" id="m_ab_totalBin">0</div>
+        </div>
+        <div class="m-abs-cell">
+          <div class="m-abs-label">Total Item</div>
+          <div class="m-abs-value c-amber" id="m_ab_totalItem">0</div>
+        </div>
+        <div class="m-abs-cell">
+          <div class="m-abs-label">Dicek ✓</div>
+          <div class="m-abs-value c-green" id="m_ab_totalChecked">0</div>
+        </div>
+      </div>
+
+      <!-- Summary ceklis (muncul kalau ada yang dicek) -->
+      <div class="m-check-summary" id="m_checkSummary" style="display:none">
+        <span class="txt" id="m_checkSummaryTxt">0 BIN sudah dicek</span>
+        <button class="clr" onclick="m_clearAllCheck()"><i class="fas fa-times"></i> Reset Cek</button>
+      </div>
+
+      <!-- Search -->
+      <div class="m-bin-search-wrap">
+        <i class="fas fa-search m-bin-search-icon"></i>
+        <input type="text" class="m-bin-search" id="m_binSearch" placeholder="Filter nama BIN…" oninput="m_renderAllBin()">
+      </div>
+
+      <!-- List BIN -->
+      <div class="m-allbin-list" id="m_allBinList">
+        <div class="m-bin-empty"><i class="fas fa-inbox" style="font-size:28px;display:block;margin-bottom:10px;opacity:.4"></i>Belum ada data scan</div>
+      </div>
+
+    </div><!-- /page-allbin -->
+
+  </div><!-- /pages -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="m_nav_scan" onclick="m_goPage('scan')">
+      <span class="nav-icon"><i class="fas fa-crosshairs"></i></span>
+      <span class="nav-label">Scan</span>
+    </button>
+    <button class="nav-item" id="m_nav_allbin" onclick="m_goPage('allbin')">
+      <span class="nav-icon"><i class="fas fa-th-large"></i></span>
+      <span class="nav-label">All BIN</span>
+      <span class="nav-badge" id="m_navBinBadge" style="display:none">0</span>
+    </button>
+    <button class="nav-item" id="m_nav_aksi" onclick="m_goPage('aksi')">
+      <span class="nav-icon"><i class="fas fa-sliders-h"></i></span>
+      <span class="nav-label">Aksi</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- ERROR OVERLAY -->
+<div class="overlay" id="m_errOverlay">
+  <div class="err-card">
+    <div class="err-icon"><i class="fas fa-ban"></i></div>
+    <div class="err-title">TERKUNCI</div>
+    <div class="err-sub">BARCODE / ARTIKEL TIDAK TERDAFTAR</div>
+    <div class="err-code" id="m_errCode">—</div>
+    <div class="err-hint">Periksa master data lalu lanjutkan.</div>
+    <button class="btn btn-red" onclick="m_unlockSystem()"><i class="fas fa-unlock-alt"></i> BUKA KUNCI</button>
+  </div>
+</div>
+
+<!-- MASTER MODAL -->
+<div class="overlay" id="m_masterModal">
+  <div class="modal-card">
+    <div class="modal-title"><i class="fas fa-database"></i> Import Master Data</div>
+    <div class="modal-sub">Upload file <strong style="color:var(--cyan)">MASTER.json</strong> berisi data barcode, produk, dan ukuran. Hanya tersimpan di browser (IndexedDB).</div>
+    <div style="font-size:11px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px">
+      <div class="ms-row"><span>MASTER_BARCODE</span><span id="m_msBc" class="ms-no">Belum dimuat</span></div>
+      <div class="ms-row"><span>MASTER_PRODUK</span> <span id="m_msPr" class="ms-no">Belum dimuat</span></div>
+      <div class="ms-row" style="border:none"><span>SIZE</span><span id="m_msSz" class="ms-no">Belum dimuat</span></div>
+    </div>
+    <div class="master-status" id="m_masterStatusSb">
+      <div class="ms-row"><span>MASTER_BARCODE</span><span id="sbBc" class="ms-no">—</span></div>
+      <div class="ms-row"><span>MASTER_PRODUK</span><span id="sbPr" class="ms-no">—</span></div>
+      <div class="ms-row" style="border:none"><span>SIZE</span><span id="sbSz" class="ms-no">—</span></div>
+    </div>
+    <div class="upload-zone" id="m_uploadZone" onclick="document.getElementById('m_fileMaster').click()">
+      <i class="fas fa-file-import" style="font-size:24px;display:block;margin-bottom:9px"></i>
+      Tap untuk pilih file MASTER.json
+    </div>
+    <input type="file" id="m_fileMaster" style="display:none" accept=".json" onchange="m_importMasterFile(event)">
+    <div class="grid2-btn">
+      <button class="btn btn-ghost" onclick="m_closeMasterModal()"><i class="fas fa-times"></i> Tutup</button>
+      <button class="btn btn-cyan" onclick="document.getElementById('m_fileMaster').click()"><i class="fas fa-upload"></i> Upload</button>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="m_exportMasterJSON()"><i class="fas fa-file-export"></i> Export Master JSON</button>
+  </div>
+</div>
+
+<!-- BIN DETAIL PANEL (mobile bottom sheet) -->
+<div id="binDetailPanel">
+  <div class="bdp-backdrop" style="touch-action:none" onclick="document.getElementById('binDetailPanel').classList.remove('open','settled')"></div>
+  <div class="bdp-sheet">
+    <div class="bdp-handle"></div>
+    <div class="bdp-head">
+      <div>
+        <div class="bdp-bin-name" id="bdp-bin-name">—</div>
+        <div class="bdp-bin-qty" id="bdp-bin-qty">0 item</div>
+      </div>
+      <button class="bdp-close" onclick="document.getElementById('binDetailPanel').classList.remove('open','settled')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    <div class="bdp-table-wrap">
+      <table class="ftable">
+        <thead>
+          <tr id="bdp-thead">
+            <th>Article</th>
+            <th>Deskripsi</th>
+            <th class="th-center">Cat</th>
+            <th class="th-center">Size US</th>
+            <th class="th-center">Size UK</th>
+            <th class="th-center">Brand</th>
+            <th class="th-center">Lokasi</th>
+            <th class="th-center">Date</th>
+            <th class="th-center"></th>
+          </tr>
+        </thead>
+        <tbody id="bdp-tbody">
+          <tr class="row-empty"><td colspan="9">Tidak ada data</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /ui-mobile -->
+
+<!-- ══ PC SCRIPTS ══ -->
+<!-- ══ PC SCRIPTS (all functions global, init guarded) ══ -->
+<script>
+
+// ── State ──────────────────────────────────────────────────────────
+let DB       = { bc: [], pr: [], sz: [] };
+let queue    = [];           // SCAN queue (IndexedDB)
+let doData   = [];           // DO storage (IndexedDB)
+let systemLocked = false;
+let html5QrCode, cameraActive = false;
+let binChecked = {};         // { 'BIN-01': true, ... } — status ceklis per BIN
+let sesiCount = 0, sesiHistory = [], sesiNo = 1, sesiMulaiTime = null;
+const PASSWORD_HAPUS = "121212";
+
+const TABLE_HEADER = ['BARCODE','LOKASI','ARTICLE','BIN','SIZE US','SIZE UK',
+                      'DESCRIPTION','BRAND','CAT','SEASON','DATE','USER','AKSI'];
+
+// ── IndexedDB ──────────────────────────────────────────────────────
+const IDB = (() => {
+  const DB_NAME = 'LeagueScanOfflineDB', DB_VERSION = 1;
+  let _db = null;
+
+  function open() {
+    return new Promise((res, rej) => {
+      if (_db) { res(_db); return; }
+      const r = indexedDB.open(DB_NAME, DB_VERSION);
+      r.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('scanQueue'))
+          db.createObjectStore('scanQueue', { keyPath:'id', autoIncrement:true });
+        if (!db.objectStoreNames.contains('doStore'))
+          db.createObjectStore('doStore',   { keyPath:'id', autoIncrement:true });
+        if (!db.objectStoreNames.contains('meta'))
+          db.createObjectStore('meta', { keyPath:'key' });
+      };
+      r.onsuccess = e => {
+        _db = e.target.result;
+        _db.onversionchange = () => { _db.close(); _db = null; };
+        res(_db);
+      };
+      r.onerror = e => rej(e.target.error);
+    });
+  }
+
+  async function addItem(storeName, item) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const { id:_, ...clean } = item;
+      const r = db.transaction(storeName,'readwrite').objectStore(storeName).add(clean);
+      r.onsuccess = () => res(r.result);
+      r.onerror   = e  => rej(e.target.error);
+    });
+  }
+  async function getAll(storeName) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const r = db.transaction(storeName,'readonly').objectStore(storeName).getAll();
+      r.onsuccess = () => res(r.result);
+      r.onerror   = e  => rej(e.target.error);
+    });
+  }
+  async function deleteByIds(storeName, ids) {
+    if (!ids?.length) return;
+    const db = await open();
+    return new Promise((res, rej) => {
+      const tx = db.transaction(storeName,'readwrite');
+      const st = tx.objectStore(storeName);
+      ids.forEach(id => st.delete(id));
+      tx.oncomplete = () => res();
+      tx.onerror    = e  => rej(e.target.error);
+    });
+  }
+  async function clearStore(storeName) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const r = db.transaction(storeName,'readwrite').objectStore(storeName).clear();
+      r.onsuccess = () => res();
+      r.onerror   = e  => rej(e.target.error);
+    });
+  }
+  async function setMeta(key, value) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const r = db.transaction('meta','readwrite').objectStore('meta').put({ key, value });
+      r.onsuccess = () => res();
+      r.onerror   = e  => rej(e.target.error);
+    });
+  }
+  async function getMeta(key) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const r = db.transaction('meta','readonly').objectStore('meta').get(key);
+      r.onsuccess = () => res(r.result?.value ?? null);
+      r.onerror   = e  => rej(e.target.error);
+    });
+  }
+  return { open, addItem, getAll, deleteByIds, clearStore, setMeta, getMeta };
+})();
+
+// ── Init ──────────────────────────────────────────────────────────
+window.onload = async () => { if(window.__IS_MOBILE) return;
+  try {
+    await IDB.open();
+    queue   = await IDB.getAll('scanQueue');
+    doData  = await IDB.getAll('doStore');
+    setIDB(true);
+
+    // Muat status ceklis BIN dari cache
+    const savedChecked = await IDB.getMeta('binChecked');
+    if (savedChecked) binChecked = savedChecked;
+
+    // Muat cache master data dari IDB
+    const cached = await IDB.getMeta('masterDB');
+    if (cached) {
+      DB = cached;
+      updateMasterStatus();
+    }
+  } catch(e) {
+    setIDB(false);
+    console.error('[IDB]', e);
+  }
+
+  updateUI();
+  updateTotals();
+
+  const binVal = document.getElementById('bin').value.trim();
+  if (binVal) { document.getElementById('targetBin').innerText = binVal.toUpperCase(); renderLocalTable(); }
+
+  // Tampilkan modal import jika master belum ada
+  if (!DB.bc.length && !DB.pr.length) {
+    setTimeout(openMasterModal, 500);
+  }
+};
+
+function setIDB(ok) {
+  const el = document.getElementById('idbBadge');
+  el.textContent = ok ? 'IDB ✓' : 'IDB ✗';
+  el.className   = 'idb-badge' + (ok ? '' : ' error');
+}
+
+// ── Master Data Import / Export ────────────────────────────────────
+function openMasterModal() {
+  document.getElementById('masterModal').classList.add('on');
+  updateMasterModal();
+}
+function closeMasterModal() {
+  document.getElementById('masterModal').classList.remove('on');
+}
+
+function updateMasterModal() {
+  const bc = DB.bc.length > 1 ? DB.bc.length - 1 : 0;
+  const pr = DB.pr.length > 1 ? DB.pr.length - 1 : 0;
+  const sz = DB.sz.length > 1 ? DB.sz.length - 1 : 0;
+  const fmt = (n, id) => {
+    document.getElementById(id).textContent  = n > 0 ? n + ' baris' : 'Belum dimuat';
+    document.getElementById(id).className    = 'ms-' + (n > 0 ? 'ok' : 'no');
+  };
+  fmt(bc,'msBc'); fmt(pr,'msPr'); fmt(sz,'msSz');
+}
+
+function updateMasterStatus() {
+  const bc = DB.bc.length > 1 ? DB.bc.length - 1 : 0;
+  const pr = DB.pr.length > 1 ? DB.pr.length - 1 : 0;
+  const sz = DB.sz.length > 1 ? DB.sz.length - 1 : 0;
+  const fmt = (n, id) => {
+    document.getElementById(id).textContent = n > 0 ? n + ' baris' : '—';
+    document.getElementById(id).className   = 'ms-' + (n > 0 ? 'ok' : 'no');
+  };
+  fmt(bc,'sbBc'); fmt(pr,'sbPr'); fmt(sz,'sbSz');
+  updateMasterModal();
+}
+
+async function importMasterFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if (!parsed.bc || !parsed.pr || !parsed.sz)
+        throw new Error('Format tidak valid. Butuh key: bc, pr, sz');
+
+      DB = { bc: parsed.bc, pr: parsed.pr, sz: parsed.sz };
+      await IDB.setMeta('masterDB', DB);
+      updateMasterStatus();
+      document.getElementById('uploadZone').classList.add('ok');
+      document.getElementById('uploadZone').innerHTML =
+        '<i class="fas fa-check-circle" style="font-size:20px;display:block;margin-bottom:6px"></i>Master berhasil dimuat!';
+
+      // Re-render tabel jika ada BIN aktif
+      const bin = document.getElementById('bin').value.trim();
+      if (bin) renderLocalTable();
+
+      alert(`✅ Master berhasil dimuat!\nBarcode: ${DB.bc.length-1} baris\nProduk: ${DB.pr.length-1} baris\nSize: ${DB.sz.length-1} baris`);
+    } catch(err) {
+      alert('❌ File tidak valid!\n' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+async function exportMasterJSON() {
+  if (!DB.bc.length && !DB.pr.length) { alert('❌ Tidak ada master data untuk diexport.'); return; }
+  const blob = new Blob([JSON.stringify(DB)], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'MASTER_' + Date.now() + '.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Helpers Size ───────────────────────────────────────────────────
+function _getSizeUS(article) {
+  return article.length >= 3 ? article.slice(-3) : '';
+}
+function _getGender(firstChar) {
+  if (firstChar === '1') return 'Laki-laki';
+  if (firstChar === '2') return 'Perempuan';
+  if (firstChar === '3') return 'Anak-anak';
+  return '';
+}
+function _getSizeUK(sizeUS, gender) {
+  if (!DB.sz || DB.sz.length === 0) return '-';
+  for (let i = 0; i < DB.sz.length; i++) {
+    const row = DB.sz[i];
+    if (!row || row.length < 3) continue;
+    if (row[0].toString().trim() === sizeUS && row[2].toString().trim() === gender)
+      return row[1].toString().trim() || '-';
+  }
+  return '-';
+}
+
+// ── Collapsible ────────────────────────────────────────────────────
+function toggleSection(id, btn) {
+  const open = document.getElementById(id).classList.toggle('open');
+  if (btn) btn.classList.toggle('open', open);
+}
+function toggleCamSection() {
+  const btn  = document.getElementById('camBtn');
+  const body = document.getElementById('camBody');
+  const open = body.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  if (!open && cameraActive) stopScanning();
+}
+
+// ── Scan Input ─────────────────────────────────────────────────────
+
+
+// ── Proses Scan ─────────────────────────────────────────────────────
+async function prosesScanInstan(input, bin) {
+  const bcRow   = DB.bc.find(r => (r[4]?.toString().trim()===input)||(r[2]?.toString().trim()===input));
+  const artFull = bcRow ? bcRow[2].toString().toUpperCase().trim() : input;
+  const best    = DB.pr.find(r => r[0] && artFull.startsWith(r[0].toString().trim()));
+
+  if (best) {
+    const rawCat = best[4]?.toString() || '';
+    const cat    = rawCat.length >= 2 ? rawCat.charAt(1) : rawCat;
+    const lokasi = document.getElementById('lokasi').value;
+    const now    = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+    const item = {
+      barcode: input,
+      article: artFull,
+      desc:    best[1],
+      brand:   best[3],
+      cat,
+      season:  best[9] || '',
+      bin,
+      lokasi,
+      date:    now,
+      user:    'LOCAL',
+    };
+
+    try { const id = await IDB.addItem('scanQueue', item); item.id = id; queue.push(item); }
+    catch(e) { console.error('[IDB] addItem:', e); queue.push(item); }
+
+    sesiCount++;
+    _updateSesiNum();
+    renderLocalTable();
+    updateUI();
+    updateTotals();
+    playBeep();
+
+  } else {
+    systemLocked = true;
+    const inp = document.getElementById('inp');
+    inp.blur(); inp.value = ''; inp.disabled = true;
+    document.getElementById('errCode').innerText = input;
+    document.getElementById('errOverlay').style.display = 'flex';
+    try {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance('Artikel tidak terdaftar');
+        u.lang = 'id-ID'; window.speechSynthesis.speak(u);
+      }
+    } catch(_) {}
+  }
+}
+
+function unlockSystem() {
+  systemLocked = false;
+  document.getElementById('errOverlay').style.display = 'none';
+  const inp = document.getElementById('inp');
+  inp.disabled = false; inp.value = '';
+  setTimeout(() => inp.focus(), 200);
+}
+
+// ── Render Tabel Lokal ─────────────────────────────────────────────
+function renderLocalTable() {
+  const bin    = document.getElementById('bin').value.toUpperCase().trim();
+  const lokasi = document.getElementById('lokasi').value;
+  document.getElementById('tableHeader').innerHTML =
+    TABLE_HEADER.map(h => `<th>${h}</th>`).join('');
+
+  const rows = queue.filter(i => i.bin === bin).slice().reverse();
+  const tbody = document.getElementById('tableBody');
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr class="row-empty"><td colspan="${TABLE_HEADER.length}">Belum ada scan di BIN ini</td></tr>`;
+    return;
+  }
+
+  const now = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
+  tbody.innerHTML = rows.map(item => {
+    const sizeUS = _getSizeUS(item.article);
+    const sizeUK = _getSizeUK(sizeUS, _getGender(item.article.charAt(0)));
+    const cells  = [
+      item.barcode, item.lokasi || lokasi, item.article, item.bin,
+      sizeUS || '-', sizeUK, item.desc, item.brand, item.cat,
+      item.season, item.date || now, item.user || '—',
+    ].map(c => `<td>${c ?? '—'}</td>`).join('');
+    const delBtn = `<td><button class="btn-del" onclick="hapusLokal(${item.id ?? `'${item.barcode}'`},'${item.bin}')">
+      <i class="fas fa-trash-alt"></i></button></td>`;
+    return `<tr class="row-s row-new">${cells}${delBtn}</tr>`;
+  }).join('');
+}
+
+// ── Hapus Lokal ────────────────────────────────────────────────────
+async function hapusLokal(idOrBarcode, bin) {
+  if (!confirm(`Hapus item di BIN ${bin}?`)) return;
+  if (typeof idOrBarcode === 'number') {
+    try { await IDB.deleteByIds('scanQueue', [idOrBarcode]); } catch(e) { console.error(e); }
+    queue = queue.filter(i => i.id !== idOrBarcode);
+  } else {
+    const idx = queue.findLastIndex(i => i.barcode === idOrBarcode && i.bin === bin);
+    if (idx !== -1) {
+      const item = queue[idx];
+      if (item.id) { try { await IDB.deleteByIds('scanQueue', [item.id]); } catch(e) {} }
+      queue.splice(idx, 1);
+    }
+  }
+  sesiCount = Math.max(0, sesiCount - 1);
+  _updateSesiNum();
+  renderLocalTable();
+  updateUI();
+  updateTotals();
+}
+
+// ── UI Update ──────────────────────────────────────────────────────
+function updateUI() {
+  const bin    = document.getElementById('bin').value.toUpperCase().trim();
+  const binQty = queue.filter(i => i.bin === bin).length;
+  document.getElementById('qtyCount').innerText = binQty;
+}
+
+function updateTotals() {
+  document.getElementById('totalAllQty').innerText = queue.length;
+}
+
+// ── BIN change ─────────────────────────────────────────────────────
+
+function loadTableData() {
+  const b = document.getElementById('bin').value.toUpperCase().trim();
+  document.getElementById('targetBin').innerText = b || '—';
+  if (!b) {
+    document.getElementById('tableHeader').innerHTML = '';
+    document.getElementById('tableBody').innerHTML =
+      `<tr class="row-empty"><td colspan="13">Masukkan BIN untuk melihat data scan</td></tr>`;
+    return;
+  }
+  renderLocalTable();
+}
+
+// ── Sesi ──────────────────────────────────────────────────────────
+function _updateSesiNum() {
+  const el = document.getElementById('sesiNum');
+  el.textContent = sesiCount;
+  el.classList.remove('pop');
+  void el.offsetWidth;
+  el.classList.add('pop');
+  const bin = document.getElementById('bin').value.toUpperCase().trim() || '—';
+  document.getElementById('sesiBinDisplay').textContent = bin;
+  document.getElementById('sesiTotalCount').textContent =
+    sesiHistory.reduce((s, h) => s + h.qty, 0) + sesiCount;
+  if (sesiCount === 1) {
+    sesiMulaiTime = new Date();
+    document.getElementById('sesiMulai').textContent =
+      sesiMulaiTime.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+}
+
+function updateSesiDisplay() {
+  document.getElementById('sesiBinDisplay').textContent =
+    document.getElementById('bin').value.toUpperCase().trim() || '—';
+}
+
+function resetSesi() {
+  if (sesiCount === 0) return;
+  const bin     = document.getElementById('bin').value.toUpperCase().trim() || '—';
+  const mulai   = sesiMulaiTime
+    ? sesiMulaiTime.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
+  const selesai = new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  sesiHistory.unshift({ no: sesiNo++, bin, qty: sesiCount, mulai, selesai });
+  sesiCount = 0; sesiMulaiTime = null;
+  document.getElementById('sesiNum').textContent   = '0';
+  document.getElementById('sesiMulai').textContent = '—';
+  document.getElementById('sesiTotalCount').textContent =
+    sesiHistory.reduce((s, h) => s + h.qty, 0);
+  const badge = document.getElementById('sesiStatusBadge');
+  badge.textContent = 'RESET ✓';
+  badge.classList.add('ok');
+  setTimeout(() => { badge.textContent = 'AKTIF'; badge.classList.remove('ok'); }, 800);
+}
+
+// ── Manajemen Hapus ────────────────────────────────────────────────
+
+async function prosesHapusBinSpesifik() {
+  const b = prompt('MASUKKAN NAMA BIN:');
+  if (!b) return;
+  const target = b.toUpperCase().trim();
+  if (!confirm(`Hapus semua data BIN ${target} di SCAN?`)) return;
+  const toDelete = queue.filter(i => i.bin.toUpperCase() === target);
+  const ids = toDelete.map(i => i.id).filter(Boolean);
+  if (ids.length) await IDB.deleteByIds('scanQueue', ids);
+  queue = queue.filter(i => i.bin.toUpperCase() !== target);
+  renderLocalTable();
+  updateUI();
+  updateTotals();
+  alert(`✅ BERHASIL: ${toDelete.length} data BIN ${target} telah dihapus.`);
+}
+
+async function resetDataDO() {
+  if (doData.length === 0) { alert('ℹ️ Data DO sudah kosong.'); return; }
+  if (!confirm(`Reset semua data DO?\n${doData.length} baris akan dihapus. Tidak bisa dibatalkan.`)) return;
+  await IDB.clearStore('doStore');
+  doData = [];
+  // Bersihkan tampilan tabel & hasil pencarian DO
+  document.getElementById('doResult').innerHTML = '<span style="color:var(--amber)">Data DO telah direset.</span>';
+  document.getElementById('searchDoInput').value = '';
+  document.getElementById('tableHeader').innerHTML = '';
+  document.getElementById('tableBody').innerHTML =
+    `<tr class="row-empty"><td colspan="13">Masukkan BIN untuk melihat data scan</td></tr>`;
+  alert('✅ Data DO berhasil direset!');
+}
+
+async function konfirmasiHapusSemua() {
+  const pass = prompt('MASUKKAN PASSWORD OTORITAS:');
+  if (!pass) return;
+  if (pass !== PASSWORD_HAPUS) { alert('❌ PASSWORD SALAH!'); return; }
+  if (!confirm(`Yakin hapus semua data SCAN? Tidak bisa dibatalkan.`)) return;
+  await IDB.clearStore('scanQueue');
+  queue = [];
+  renderLocalTable();
+  updateUI();
+  updateTotals();
+  alert('✅ Data SCAN berhasil dikosongkan!');
+}
+
+// ── DO Proses (Offline) ────────────────────────────────────────────
+async function jalankanProsesDO() {
+  if (queue.length === 0) { alert('❌ Data SCAN kosong!'); return; }
+  if (!confirm('Pindahkan semua data SCAN ke DO?')) return;
+
+  const summaryDO = {};
+  const now       = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
+
+  for (const item of queue) {
+    const art   = (item.article || '').trim();
+    const noDO  = (item.bin    || '-').toUpperCase().trim();
+    if (!art || noDO === '-') continue;
+    const key = noDO + '|' + art;
+    if (!summaryDO[key]) summaryDO[key] = { noDO, article: art, name: item.desc || '', qty: 0, date: now };
+    summaryDO[key].qty += 1;
+  }
+
+  const rows = Object.values(summaryDO);
+  if (rows.length === 0) { alert('ℹ️ Tidak ada data valid untuk dipindahkan.'); return; }
+
+  for (const row of rows) {
+    const id = await IDB.addItem('doStore', row);
+    doData.push({ ...row, id });
+  }
+
+  // Kosongkan SCAN
+  await IDB.clearStore('scanQueue');
+  queue = [];
+
+  renderLocalTable();
+  updateUI();
+  updateTotals();
+  alert(`✅ BERHASIL! ${rows.length} baris dipindah ke DO. SCAN dikosongkan.`);
+}
+
+// ── Cari DO ────────────────────────────────────────────────────────
+function cariDataDO() {
+  const kw  = document.getElementById('searchDoInput').value.trim().toUpperCase();
+  const res = document.getElementById('doResult');
+
+  const rows = kw
+    ? doData.filter(r => (r.noDO||'').toUpperCase().includes(kw) || (r.article||'').toUpperCase().includes(kw))
+    : doData;
+
+  if (rows.length === 0) {
+    res.innerHTML = '<em>Tidak ada data DO.</em>';
+    return;
+  }
+
+  // Tampilkan di main table
+  const header = ['NO.DO','ARTICLE','NAMA','QTY','DATE'];
+  document.getElementById('tableHeader').innerHTML = header.map(h=>`<th>${h}</th>`).join('');
+  document.getElementById('tableBody').innerHTML = [...rows].reverse().map(r =>
+    `<tr class="row-w"><td>${r.noDO}</td><td>${r.article}</td><td>${r.name}</td><td>${r.qty}</td><td>${r.date}</td></tr>`
+  ).join('');
+  res.innerHTML = `<span style="color:var(--green)">${rows.length} baris ditemukan</span>`;
+}
+
+// ── Export Excel ───────────────────────────────────────────────────
+async function exportExcelScan() {
+  let data = queue;
+  try { data = await IDB.getAll('scanQueue'); } catch(_) {}
+  if (!data.length) { alert('ℹ️ Tidak ada data SCAN.'); return; }
+
+  const bin    = document.getElementById('bin').value.toUpperCase().trim();
+  const lokasi = document.getElementById('lokasi').value;
+  const p = prompt('EXPORT SCAN:\n1 → Semua BIN\n2 → BIN aktif saja (' + (bin||'belum diisi') + ')');
+  if (!p) return;
+
+  let rows = data;
+  if (p === '2') {
+    if (!bin) { alert('❌ Isi BIN terlebih dahulu.'); return; }
+    rows = data.filter(i => i.bin === bin);
+    if (!rows.length) { alert('ℹ️ Tidak ada data di BIN ' + bin); return; }
+  } else if (p !== '1') { alert('❌ Pilihan tidak valid.'); return; }
+
+  const HEADER = ['BARCODE','LOKASI','ARTICLE','BIN','SIZE US','SIZE UK',
+                  'DESCRIPTION','BRAND','CAT','SEASON','DATE','USER'];
+  const sheetData = [HEADER, ...rows.map(item => {
+    const sizeUS = _getSizeUS(item.article);
+    const sizeUK = _getSizeUK(sizeUS, _getGender(item.article.charAt(0)));
+    return [item.barcode||'',item.lokasi||lokasi,item.article||'',item.bin||'',
+            sizeUS||'',sizeUK||'-',item.desc||'',item.brand||'',item.cat||'',
+            item.season||'',item.date||'',item.user||''];
+  })];
+
+  _downloadXLSX(sheetData, 'SCAN', `SCAN${p==='2'?'_'+bin:'_SEMUA'}_${_todayStr()}.xlsx`);
+}
+
+
+async function exportExcelDO() {
+  let data = doData;
+  try { data = await IDB.getAll('doStore'); } catch(_) {}
+  if (!data.length) { alert('ℹ️ Tidak ada data DO.'); return; }
+
+  const HEADER = ['NO.DO','ARTICLE','NAMA','QTY','DATE'];
+  const sheetData = [HEADER, ...data.map(r => [r.noDO,r.article,r.name,r.qty,r.date])];
+  _downloadXLSX(sheetData, 'DO', `DO_${_todayStr()}.xlsx`);
+}
+
+function _todayStr() {
+  return new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'-');
+}
+function _downloadXLSX(sheetData, sheetName, fileName) {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  const colWidths = sheetData[0].map((h, ci) => ({
+    wch: Math.min(sheetData.reduce((m, row) => Math.max(m, String(row[ci]??'').length), String(h).length) + 2, 40)
+  }));
+  ws['!cols'] = colWidths;
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, fileName);
+}
+
+// ── Backup / Restore ───────────────────────────────────────────────
+async function downloadOfflineBackup() {
+  let scan = queue, doDat = doData;
+  try { scan  = await IDB.getAll('scanQueue'); } catch(_) {}
+  try { doDat = await IDB.getAll('doStore');   } catch(_) {}
+
+  const total = scan.length + doDat.length;
+  if (!total) { alert('ℹ️ Tidak ada data untuk di-backup.'); return; }
+
+  const payload = {
+    scan: scan.map(({ id:_, ...r }) => r),
+    do:   doDat.map(({ id:_, ...r }) => r),
+    ts:   new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(payload)], { type:'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'BACKUP_' + Date.now() + '.txt'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function restoreOfflineBackup(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const parsed   = JSON.parse(ev.target.result);
+      const scanItems = Array.isArray(parsed) ? parsed : (parsed.scan || []);
+      const doItems   = parsed.do || [];
+      let ok = 0;
+
+      for (const item of scanItems) {
+        try { const id = await IDB.addItem('scanQueue', item); queue.push({...item,id}); ok++; } catch(_) {}
+      }
+      for (const item of doItems) {
+        try { const id = await IDB.addItem('doStore', item); doData.push({...item,id}); ok++; } catch(_) {}
+      }
+
+      updateUI();
+      updateTotals();
+      alert(`✅ Restore selesai! ${ok} item dimuat (SCAN: ${scanItems.length}, DO: ${doItems.length}).`);
+    } catch(err) { alert('❌ File tidak valid!\n' + err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ── ALL BIN ────────────────────────────────────────────────────────
+let allBinOpen = false;
+
+function toggleAllBin() {
+  allBinOpen = !allBinOpen;
+  const overlay = document.getElementById('allBinOverlay');
+  const btn     = document.getElementById('btnAllBin');
+  overlay.style.display = allBinOpen ? 'flex' : 'none';
+  btn.classList.toggle('active', allBinOpen);
+  if (allBinOpen) {
+    renderAllBinCards();
+    document.getElementById('abSearch').value = '';
+    setTimeout(() => document.getElementById('abSearch').focus(), 80);
+  }
+}
+
+function renderAllBinCards() {
+  const kw    = document.getElementById('abSearch').value.trim().toUpperCase();
+  const cards = document.getElementById('abCards');
+  const totEl = document.getElementById('abTotal');
+  const binMap = {};
+  for (const item of queue) {
+    const b = item.bin || '?';
+    if (!binMap[b]) binMap[b] = { qty: 0, brands: new Set(), lokasi: item.lokasi || '' };
+    binMap[b].qty++;
+    if (item.brand) binMap[b].brands.add(item.brand);
+  }
+  let bins = Object.entries(binMap).sort((a, b) => b[1].qty - a[1].qty);
+  if (kw) bins = bins.filter(([name]) => name.includes(kw));
+
+  const totalChecked = Object.values(binChecked).filter(Boolean).length;
+  totEl.textContent = bins.length + ' BIN · ' + queue.length + ' item'
+    + (totalChecked > 0 ? ` · ✓ ${totalChecked} cek` : '');
+
+  if (bins.length === 0) {
+    cards.innerHTML = `<div class="ab-empty">
+      ${queue.length === 0
+        ? '<i class="fas fa-inbox" style="font-size:28px;display:block;margin-bottom:10px;color:var(--border2)"></i>Belum ada data scan lokal'
+        : 'Tidak ada BIN yang cocok'}
+    </div>`;
+    return;
+  }
+  cards.innerHTML = bins.map(([name, info]) => {
+    const brands    = [...info.brands].slice(0,2).join(', ') + (info.brands.size > 2 ? '…' : '');
+    const lokasiCls = info.lokasi === 'Display' ? 'bc-lokasi display' : info.lokasi === 'Riject' ? 'bc-lokasi riject' : 'bc-lokasi';
+    const isChecked = !!binChecked[name];
+    return `
+      <div class="bin-card${isChecked ? ' checked-card' : ''}" onclick="openBinDetail('${name.replace(/'/g,"\\'")}')">
+        <div class="bc-check${isChecked ? ' checked' : ''}"
+             onclick="event.stopPropagation();toggleBinCheck('${name.replace(/'/g,"\\'")}')"></div>
+        <div><div class="bc-lbl">BIN</div><div class="bc-name">${name}</div></div>
+        <div><div class="bc-lbl">QTY</div><div class="bc-qty">${info.qty}</div></div>
+        <div class="bc-meta">
+          ${brands ? `<div class="bc-brand-row"><i class="fas fa-tag" style="color:var(--text-muted);font-size:8px;margin-right:3px"></i>${brands}</div>` : ''}
+          ${info.lokasi ? `<span class="${lokasiCls}">${info.lokasi}</span>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function toggleBinCheck(bin) {
+  binChecked[bin] = !binChecked[bin];
+  try { await IDB.setMeta('binChecked', binChecked); } catch(e) { console.warn('[IDB] binChecked:', e); }
+  renderAllBinCards();
+}
+
+function openBinDetail(bin) {
+  const items  = queue.filter(i => i.bin === bin).slice().reverse();
+  const panel  = document.getElementById('abDetail');
+  const lokasi = document.getElementById('lokasi').value;
+  const now    = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
+  document.getElementById('abdBinName').textContent  = bin;
+  document.getElementById('abdQtyLabel').textContent = items.length + ' item';
+  document.getElementById('abdHeader').innerHTML = TABLE_HEADER.map(h => `<th>${h}</th>`).join('');
+  document.getElementById('abdBody').innerHTML = items.length
+    ? items.map(item => {
+        const sizeUS = _getSizeUS(item.article);
+        const sizeUK = _getSizeUK(sizeUS, _getGender(item.article.charAt(0)));
+        const cells  = [item.barcode, item.lokasi || lokasi, item.article, item.bin,
+          sizeUS || '-', sizeUK, item.desc, item.brand, item.cat,
+          item.season, item.date || now, item.user || '—'
+        ].map(c => `<td>${c ?? '—'}</td>`).join('');
+        const del = `<td><button class="btn-del"
+          onclick="hapusLokalDariDetail(${item.id ?? `'${item.barcode}'`},'${bin}')">
+          <i class="fas fa-trash-alt"></i></button></td>`;
+        return `<tr class="row-s">${cells}${del}</tr>`;
+      }).join('')
+    : `<tr class="row-empty"><td colspan="${TABLE_HEADER.length}">Tidak ada data</td></tr>`;
+  panel.classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('abDetail').classList.remove('open');
+  renderAllBinCards();
+}
+
+async function hapusLokalDariDetail(idOrBarcode, bin) {
+  if (!confirm(`Hapus item di BIN ${bin}?`)) return;
+  if (typeof idOrBarcode === 'number') {
+    try { await IDB.deleteByIds('scanQueue', [idOrBarcode]); } catch(e) { console.error(e); }
+    queue = queue.filter(i => i.id !== idOrBarcode);
+  } else {
+    const idx = queue.findLastIndex(i => i.barcode === idOrBarcode && i.bin === bin);
+    if (idx !== -1) {
+      const item = queue[idx];
+      if (item.id) { try { await IDB.deleteByIds('scanQueue', [item.id]); } catch(e) {} }
+      queue.splice(idx, 1);
+    }
+  }
+  updateUI();
+  updateTotals();
+  openBinDetail(bin);
+  if (!queue.some(i => i.bin === bin)) closeDetail();
+  const activeBin = document.getElementById('bin').value.toUpperCase().trim();
+  if (activeBin === bin) renderLocalTable();
+}
+
+// ── Kamera ─────────────────────────────────────────────────────────
+function toggleScanner() {
+  if (!cameraActive) {
+    document.getElementById('reader').style.display = 'block';
+    document.getElementById('btnKamera').innerHTML  = '<i class="fas fa-stop-circle"></i> MATIKAN KAMERA';
+    document.getElementById('btnKamera').className  = 'btn btn-red';
+    startScanning();
+  } else {
+    stopScanning();
+  }
+}
+
+async function startScanning() {
+  cameraActive = true;
+  html5QrCode  = new Html5Qrcode('reader');
+  const onScan = txt => {
+    const bin = document.getElementById('bin').value.toUpperCase().trim();
+    if (!bin) { alert('Isi BIN dulu!'); stopScanning(); return; }
+    prosesScanInstan(txt, bin);
+  };
+  const cfg = { fps:25, qrbox:{width:265,height:155}, aspectRatio:1.0 };
+  try {
+    await html5QrCode.start({ facingMode:'environment' }, cfg, onScan);
+  } catch(_) {
+    try { await html5QrCode.start({ facingMode:'environment' }, { fps:20, qrbox:{width:240,height:140} }, onScan); }
+    catch(err) { alert('❌ Gagal buka kamera: ' + err); stopScanning(); }
+  }
+}
+
+function stopScanning() {
+  cameraActive = false;
+  const div = document.getElementById('reader');
+  document.getElementById('btnKamera').innerHTML = '<i class="fas fa-camera"></i> AKTIFKAN KAMERA';
+  document.getElementById('btnKamera').className = 'btn btn-cyan';
+  if (html5QrCode) html5QrCode.stop().catch(()=>{}).finally(()=>{ div.style.display='none'; });
+  else div.style.display = 'none';
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine'; osc.frequency.setValueAtTime(900, ctx.currentTime);
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    osc.start(); osc.stop(ctx.currentTime + 0.08);
+  } catch(_) {}
+}
+
+/* PC event listeners — only attach on PC */
+if(!window.__IS_MOBILE){
+  document.getElementById('inp').addEventListener('keydown', function(e) {
+    if (e.key === '\\') { e.preventDefault(); resetSesi(); return; }
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (systemLocked) return;
+    var val = this.value.toUpperCase().trim();
+    var bin = document.getElementById('bin').value.toUpperCase().trim();
+    if (!val || !bin) { alert('BIN atau Barcode kosong!'); return; }
+    this.value = '';
+    prosesScanInstan(val, bin);
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== '\\') return;
+    var tag = document.activeElement && document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    e.preventDefault();
+    resetSesi();
+  });
+  document.getElementById('bin').addEventListener('input', updateUI);
+  document.getElementById('bin').addEventListener('change', function() {
+    var b = this.value.toUpperCase().trim();
+    this.value = b;
+    document.getElementById('targetBin').innerText = b || '—';
+    sesiCount = 0; sesiHistory = []; sesiNo = 1; sesiMulaiTime = null;
+    document.getElementById('sesiNum').textContent        = '0';
+    document.getElementById('sesiMulai').textContent      = '—';
+    document.getElementById('sesiTotalCount').textContent = '0';
+    updateSesiDisplay();
+    loadTableData();
+    updateUI();
+  });
+}
+</script>
+
+<!-- ══ MOBILE SCRIPTS ══ -->
+<script>
+
+// ── State ──
+// NOTE: shared state vars are already declared in PC scripts above (DB, queue, doData, systemLocked, etc.)
+// Mobile uses same IndexedDB (IDB) but scoped to mobile section
+let m_currentPage = 'scan';
+let m_activeBin = '';
+let m_sesiCount = 0, m_sesiHistory = [], m_sesiNo = 1, m_sesiMulaiTime = null;
+let m_html5QrCode, m_cameraActive = false;
+let m_binChecked = {};
+
+// ── Navigation ──
+function m_goPage(page) {
+  m_currentPage = page;
+  // toggle pages
+  ['scan','aksi','allbin'].forEach(p => {
+    const el = document.getElementById('page-' + p);
+    if (el) el.classList.toggle('active', p === page);
+  });
+  // toggle nav
+  ['scan','aksi','allbin'].forEach(p => {
+    const el = document.getElementById('m_nav_' + p);
+    if (el) el.classList.toggle('active', p === page);
+  });
+  // show stats strip only on scan page
+  const statsEl = document.getElementById('m_statsStrip');
+  if (statsEl) statsEl.style.display = page === 'scan' ? 'grid' : 'none';
+  if (page === 'allbin') m_renderAllBin();
+  if (page === 'aksi') m_updateAksiMasterStatus();
+}
+
+// ── Init ──
+async function _mob_init() {
+  try {
+    await IDB.open();
+    queue  = await IDB.getAll('scanQueue');
+    doData = await IDB.getAll('doStore');
+    m_setIDB(true);
+    const cached = await IDB.getMeta('masterDB');
+    if (cached) { DB = cached; m_updateMasterStatus(); }
+    // Load saved ceklis
+    const savedChk = await IDB.getMeta('m_binChecked');
+    if (savedChk) m_binChecked = savedChk;
+  } catch(e) { m_setIDB(false); console.error('[IDB]', e); }
+  m_updateTotals();
+  if (!DB.bc.length && !DB.pr.length) setTimeout(m_openMasterModal, 400);
+  // Focus scan input on load
+  setTimeout(() => { const inp = document.getElementById('m_inp'); if(inp) inp.focus(); }, 300);
+}
+
+function m_setIDB(ok) {
+  const el = document.getElementById('m_idbBadge');
+  if (!el) return;
+  el.textContent = ok ? 'IDB ✓' : 'IDB ✗';
+  el.className = 'badge badge-idb' + (ok ? '' : ' err');
+}
+
+// ── Master ──
+function m_openMasterModal()  { document.getElementById('m_masterModal').classList.add('on'); m_updateMasterStatus(); }
+function m_closeMasterModal() { document.getElementById('m_masterModal').classList.remove('on'); }
+
+function m_updateMasterStatus() {
+  const bc = DB.bc.length > 1 ? DB.bc.length - 1 : 0;
+  const pr = DB.pr.length > 1 ? DB.pr.length - 1 : 0;
+  const sz = DB.sz.length > 1 ? DB.sz.length - 1 : 0;
+  const ids = ['m_msBc','m_msPr','m_msSz','sbBc','sbPr','sbSz'];
+  const vals = [bc, pr, sz, bc, pr, sz];
+  const empties = ['Belum dimuat','Belum dimuat','Belum dimuat','—','—','—'];
+  ids.forEach((id, i) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.textContent = vals[i] > 0 ? vals[i] + ' baris' : empties[i];
+    el.className = vals[i] > 0 ? 'ms-ok' : 'ms-no';
+  });
+  m_updateAksiMasterStatus();
+}
+
+function m_updateAksiMasterStatus() {
+  const bc = DB.bc.length > 1 ? DB.bc.length - 1 : 0;
+  const pr = DB.pr.length > 1 ? DB.pr.length - 1 : 0;
+  const sz = DB.sz.length > 1 ? DB.sz.length - 1 : 0;
+  const map = { aksi_msBc: bc, aksi_msPr: pr, aksi_msSz: sz };
+  Object.entries(map).forEach(([id, val]) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.textContent = val > 0 ? val + ' baris' : '—';
+    el.className = val > 0 ? 'ms-ok' : 'ms-no';
+  });
+}
+
+// ── ALL BIN Render ──
+function m_renderAllBin() {
+  const kw = (document.getElementById('m_binSearch')?.value || '').trim().toUpperCase();
+  const listEl = document.getElementById('m_allBinList');
+
+  // Build bin map
+  const binMap = {};
+  for (const item of queue) {
+    const b = item.bin || '?';
+    if (!binMap[b]) binMap[b] = { qty: 0, brands: new Set(), lokasi: item.lokasi || '' };
+    binMap[b].qty++;
+    if (item.brand) binMap[b].brands.add(item.brand);
+  }
+  let bins = Object.entries(binMap).sort((a, b) => b[1].qty - a[1].qty);
+  if (kw) bins = bins.filter(([name]) => name.includes(kw));
+
+  // Update stats
+  const totalBin = Object.keys(binMap).length;
+  const totalItem = queue.length;
+  const totalChecked = Object.values(m_binChecked).filter(Boolean).length;
+  const el_tBin = document.getElementById('m_ab_totalBin');
+  const el_tItem = document.getElementById('m_ab_totalItem');
+  const el_tChk = document.getElementById('m_ab_totalChecked');
+  if (el_tBin) el_tBin.textContent = totalBin;
+  if (el_tItem) el_tItem.textContent = totalItem;
+  if (el_tChk) el_tChk.textContent = totalChecked;
+
+  // Update nav badge
+  const badge = document.getElementById('m_navBinBadge');
+  if (badge) { badge.textContent = totalBin; badge.style.display = totalBin > 0 ? '' : 'none'; }
+
+  // Check summary
+  const sumEl = document.getElementById('m_checkSummary');
+  const sumTxt = document.getElementById('m_checkSummaryTxt');
+  if (sumEl) sumEl.style.display = totalChecked > 0 ? 'flex' : 'none';
+  if (sumTxt) sumTxt.textContent = totalChecked + ' / ' + totalBin + ' BIN sudah dicek';
+
+  if (!listEl) return;
+
+  if (bins.length === 0) {
+    listEl.innerHTML = `<div class="m-bin-empty">
+      <i class="fas fa-inbox" style="font-size:28px;display:block;margin-bottom:10px;opacity:.4"></i>
+      ${queue.length === 0 ? 'Belum ada data scan' : 'Tidak ada BIN yang cocok'}
+    </div>`;
+    return;
+  }
+
+  listEl.innerHTML = bins.map(([name, info]) => {
+    const isChecked = !!m_binChecked[name];
+    const brands = [...info.brands].slice(0, 2).join(', ') + (info.brands.size > 2 ? '…' : '');
+    const lokasiKey = (info.lokasi || '').toLowerCase();
+    const lokasiClass = lokasiKey === 'display' ? 'display' : lokasiKey === 'riject' ? 'riject' : 'gudang';
+    const safeN = name.replace(/'/g, "\\'");
+    return `<div class="m-bin-row${isChecked ? ' checked-row' : ''}" onclick="m_openBinDetailMob('${safeN}')">
+      <div class="m-bin-chk${isChecked ? ' checked' : ''}"
+           onclick="event.stopPropagation();m_toggleBinCheck('${safeN}')"></div>
+      <div class="m-bin-info">
+        <div class="m-bin-name">${name}</div>
+        <div class="m-bin-meta">${brands || '—'}</div>
+      </div>
+      ${info.lokasi ? `<span class="m-bin-lokasi ${lokasiClass}">${info.lokasi}</span>` : ''}
+      <div class="m-bin-qty">${info.qty}</div>
+    </div>`;
+  }).join('');
+}
+
+async function m_toggleBinCheck(bin) {
+  m_binChecked[bin] = !m_binChecked[bin];
+  try { await IDB.setMeta('m_binChecked', m_binChecked); } catch(e) {}
+  m_renderAllBin();
+}
+
+async function m_clearAllCheck() {
+  if (!confirm('Reset semua ceklis BIN?')) return;
+  m_binChecked = {};
+  try { await IDB.setMeta('m_binChecked', m_binChecked); } catch(e) {}
+  m_renderAllBin();
+}
+
+function m_openBinDetailMob(bin) {
+  const items = queue.filter(i => i.bin === bin).slice().reverse();
+  const panel = document.getElementById('binDetailPanel');
+  if (!panel) return;
+
+  // Update header
+  const nameEl = document.getElementById('bdp-bin-name');
+  const qtyEl  = document.getElementById('bdp-bin-qty');
+  if (nameEl) nameEl.textContent = bin;
+  if (qtyEl)  qtyEl.textContent  = items.length + ' item';
+
+  const tbody = document.getElementById('bdp-tbody');
+  if (!tbody) { panel.classList.add('open'); return; }
+
+  if (!items.length) {
+    tbody.innerHTML = '<tr class="row-empty"><td colspan="9">Tidak ada data</td></tr>';
+    panel.classList.add('open');
+    return;
+  }
+
+  tbody.innerHTML = items.map(item => {
+    const sUS = m__getSizeUS(item.article || '');
+    const sUK = m__getSizeUK(sUS, m__getGender((item.article || '').charAt(0)));
+    const sid = typeof item.id === 'number' ? item.id : `'${(item.barcode||'').replace(/'/g,"\\'")}'`;
+    const safeB = (bin||'').replace(/'/g,"\\'");
+    return `<tr>
+      <td class="td-art">${item.article||'—'}</td>
+      <td class="td-desc">${item.desc||'—'}</td>
+      <td class="td-cat">${item.cat||'—'}</td>
+      <td class="td-bin">${sUS||'-'}</td>
+      <td class="td-bin">${sUK||'-'}</td>
+      <td style="white-space:nowrap;color:var(--text-dim)">${item.brand||'—'}</td>
+      <td style="white-space:nowrap;text-align:center;color:var(--text-dim)">${item.lokasi||'—'}</td>
+      <td style="white-space:nowrap;text-align:center;color:var(--text-muted);font-size:10px">${item.date||'—'}</td>
+      <td class="td-del"><button class="btn-del" onclick="m_hapusItemDariAllBin(${sid},'${safeB}')"><i class="fas fa-trash-alt"></i></button></td>
+    </tr>`;
+  }).join('');
+
+  // Reset scroll ke atas sebelum buka
+  const wrap = panel.querySelector('.bdp-table-wrap');
+  if (wrap) { wrap.scrollTop = 0; wrap.scrollLeft = 0; }
+
+  panel.classList.remove('settled');
+  panel.classList.add('open');
+
+  // Tambah class 'settled' setelah animasi selesai → will-change dilepas
+  // sehingga GPU layer tidak menghalangi scroll touch
+  setTimeout(() => panel.classList.add('settled'), 300);
+}
+
+async function m_hapusItemDariAllBin(idOrBarcode, bin) {
+  if (!confirm('Hapus item ini?')) return;
+  if (typeof idOrBarcode === 'number') {
+    try { await IDB.deleteByIds('scanQueue', [idOrBarcode]); } catch(e) {}
+    queue = queue.filter(i => i.id !== idOrBarcode);
+  } else {
+    const idx = queue.findLastIndex(i => i.barcode === idOrBarcode && i.bin === bin);
+    if (idx !== -1) {
+      const item = queue[idx];
+      if (item.id) { try { await IDB.deleteByIds('scanQueue', [item.id]); } catch(e) {} }
+      queue.splice(idx, 1);
+    }
+  }
+  m_updateTotals();
+  m_renderAllBin();
+  m_openBinDetailMob(bin);
+  if (!queue.some(i => i.bin === bin)) {
+    const panel = document.getElementById('binDetailPanel');
+    if (panel) panel.classList.remove('open');
+  }
+}
+
+async function m_importMasterFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = async ev => {
+    try {
+      const p = JSON.parse(ev.target.result);
+      if (!p.bc || !p.pr || !p.sz) throw new Error('Format tidak valid.');
+      DB = { bc: p.bc, pr: p.pr, sz: p.sz };
+      await IDB.setMeta('masterDB', DB);
+      m_updateMasterStatus();
+      const uz = document.getElementById('m_uploadZone');
+      uz.classList.add('ok');
+      uz.innerHTML = '<i class="fas fa-check-circle" style="font-size:24px;display:block;margin-bottom:9px"></i>Master berhasil dimuat!';
+      alert(`✅ Master dimuat!\nBarcode: ${DB.bc.length-1}\nProduk: ${DB.pr.length-1}\nSize: ${DB.sz.length-1}`);
+    } catch(err) { alert('❌ File tidak valid!\n' + err.message); }
+  };
+  r.readAsText(file); e.target.value = '';
+}
+
+async function m_exportMasterJSON() {
+  if (!DB.bc.length) { alert('Tidak ada master data.'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(DB)], { type:'application/json' }));
+  a.download = 'MASTER_' + Date.now() + '.json'; a.click();
+}
+
+// ── Helpers Size ──
+function m__getSizeUS(a) { return a.length >= 3 ? a.slice(-3) : ''; }
+function m__getGender(c) {
+  if (c === '1') return 'Laki-laki';
+  if (c === '2') return 'Perempuan';
+  if (c === '3') return 'Anak-anak';
+  return '';
+}
+function m__getSizeUK(sUS, gender) {
+  for (const row of DB.sz) {
+    if (!row || row.length < 3) continue;
+    if (row[0].toString().trim() === sUS && row[2].toString().trim() === gender)
+      return row[1].toString().trim() || '-';
+  }
+  return '-';
+}
+
+// ── BIN change event ──
+document.getElementById('m_bin').addEventListener('input', function() {
+  const b = this.value.toUpperCase().trim();
+  document.getElementById('m_qtyCount').textContent = queue.filter(i => i.bin === b).length;
+});
+
+document.getElementById('m_bin').addEventListener('change', function() {
+  const b = this.value.toUpperCase().trim();
+  this.value = b;
+  m__onBinChange(b);
+});
+
+document.getElementById('m_inp').addEventListener('keydown', function(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  if (systemLocked) return;
+  const val = this.value.toUpperCase().trim();
+  const bin = document.getElementById('m_bin').value.toUpperCase().trim();
+  if (!val || !bin) { alert('BIN atau Barcode kosong!'); return; }
+  if (bin !== m_activeBin) m__onBinChange(bin);
+  this.value = '';
+  m_prosesScan(val, bin);
+});
+
+function m__onBinChange(b) {
+  if (b === m_activeBin) return;
+  m_activeBin = b;
+  document.getElementById('m_sesiBinDisplay').textContent = b || '—';
+  document.getElementById('m_binLabel').textContent = b || '—';
+  // reset sesi
+  m_sesiCount = 0; m_sesiHistory = []; m_sesiNo = 1; m_sesiMulaiTime = null;
+  document.getElementById('m_sesiNum').textContent = '0';
+  document.getElementById('m_sesiMulai').textContent = '—';
+  document.getElementById('m_sesiTotalCount').textContent = '0';
+  m_updateTotals();
+  m_renderTable();
+}
+
+// ── Proses Scan ──
+async function m_prosesScan(input, bin) {
+  const bcRow   = DB.bc.find(r => r[4]?.toString().trim() === input || r[2]?.toString().trim() === input);
+  const artFull = bcRow ? bcRow[2].toString().toUpperCase().trim() : input;
+  const best    = DB.pr.find(r => r[0] && artFull.startsWith(r[0].toString().trim()));
+
+  if (best) {
+    const rawCat = best[4]?.toString() || '';
+    const cat    = rawCat.length >= 2 ? rawCat.charAt(1) : rawCat;
+    const lokasi = document.getElementById('m_lokasi').value;
+    const now    = new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const item   = { barcode:input, article:artFull, desc:best[1], brand:best[3], cat,
+                     season:best[9]||'', bin, lokasi, date:now, user:'LOCAL' };
+    try { const id = await IDB.addItem('scanQueue', item); item.id = id; queue.push(item); }
+    catch(e) { console.error('[IDB]', e); queue.push(item); }
+    m_sesiCount++;
+    m_updateSesiNum();
+    m_updateTotals();
+    m_renderTable();
+    m_playBeep();
+  } else {
+    systemLocked = true;
+    const inp = document.getElementById('m_inp');
+    inp.blur(); inp.value = ''; inp.disabled = true;
+    document.getElementById('m_errCode').textContent = input;
+    document.getElementById('m_errOverlay').classList.add('on');
+    try {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance('Artikel tidak terdaftar');
+        u.lang = 'id-ID'; window.speechSynthesis.speak(u);
+      }
+    } catch(_) {}
+  }
+}
+
+function m_unlockSystem() {
+  systemLocked = false;
+  document.getElementById('m_errOverlay').classList.remove('on');
+  const inp = document.getElementById('m_inp');
+  inp.disabled = false; inp.value = '';
+  setTimeout(() => inp.focus(), 200);
+}
+
+// ── Render Table ──
+function m_renderTable() {
+  const bin   = document.getElementById('m_bin').value.toUpperCase().trim();
+  const tbody = document.getElementById('m_tableBody');
+  document.getElementById('m_binLabel').textContent = bin || '—';
+  if (!bin) {
+    tbody.innerHTML = '<tr class="row-empty"><td colspan="5">Masukkan BIN untuk melihat data</td></tr>';
+    return;
+  }
+  const rows = queue.filter(i => i.bin === bin).slice().reverse();
+  if (!rows.length) {
+    tbody.innerHTML = '<tr class="row-empty"><td colspan="5">Belum ada scan di BIN ini</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(item => {
+    const sid = typeof item.id === 'number' ? item.id : `'${item.barcode}'`;
+    return `<tr class="row-new">
+      <td class="td-art">${item.article || '—'}</td>
+      <td class="td-desc">${item.desc || '—'}</td>
+      <td class="td-cat">${item.cat || '—'}</td>
+      <td class="td-bin">${item.bin || '—'}</td>
+      <td class="td-del"><button class="btn-del" onclick="m_hapusItem(${sid},'${item.bin}')"><i class="fas fa-trash-alt"></i></button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function m_hapusItem(idOrBarcode, bin) {
+  if (!confirm(`Hapus item di BIN ${bin}?`)) return;
+  if (typeof idOrBarcode === 'number') {
+    try { await IDB.deleteByIds('scanQueue', [idOrBarcode]); } catch(e) {}
+    queue = queue.filter(i => i.id !== idOrBarcode);
+  } else {
+    const idx = queue.findLastIndex(i => i.barcode === idOrBarcode && i.bin === bin);
+    if (idx !== -1) {
+      const item = queue[idx];
+      if (item.id) { try { await IDB.deleteByIds('scanQueue', [item.id]); } catch(e) {} }
+      queue.splice(idx, 1);
+    }
+  }
+  m_sesiCount = Math.max(0, m_sesiCount - 1);
+  m_updateSesiNum();
+  m_updateTotals();
+  m_renderTable();
+}
+
+// ── Totals ──
+function m_updateTotals() {
+  const bin = document.getElementById('m_bin').value.toUpperCase().trim();
+  document.getElementById('m_totalAllQty').textContent = queue.length;
+  document.getElementById('m_qtyCount').textContent    = queue.filter(i => i.bin === bin).length;
+  // Update bin nav badge
+  const bins = new Set(queue.map(i => i.bin)).size;
+  const badge = document.getElementById('m_navBinBadge');
+  if (badge) { badge.textContent = bins; badge.style.display = bins > 0 ? '' : 'none'; }
+  // Refresh allbin page if visible
+  if (m_currentPage === 'allbin') m_renderAllBin();
+}
+
+// ── Sesi ──
+function m_updateSesiNum() {
+  const el = document.getElementById('m_sesiNum');
+  el.textContent = m_sesiCount;
+  el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  const bin = document.getElementById('m_bin').value.toUpperCase().trim() || '—';
+  document.getElementById('m_sesiBinDisplay').textContent = bin;
+  document.getElementById('m_sesiTotalCount').textContent =
+    m_sesiHistory.reduce((s, h) => s + h.qty, 0) + m_sesiCount;
+  if (m_sesiCount === 1) {
+    m_sesiMulaiTime = new Date();
+    document.getElementById('m_sesiMulai').textContent =
+      m_sesiMulaiTime.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  }
+}
+
+function m_resetSesi() {
+  if (m_sesiCount === 0) return;
+  const bin     = document.getElementById('m_bin').value.toUpperCase().trim() || '—';
+  const mulai   = m_sesiMulaiTime
+    ? m_sesiMulaiTime.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) : '—';
+  const selesai = new Date().toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  m_sesiHistory.unshift({ no: m_sesiNo++, bin, qty: m_sesiCount, mulai, selesai });
+  m_sesiCount = 0; m_sesiMulaiTime = null;
+  document.getElementById('m_sesiNum').textContent  = '0';
+  document.getElementById('m_sesiMulai').textContent = '—';
+  document.getElementById('m_sesiTotalCount').textContent =
+    m_sesiHistory.reduce((s, h) => s + h.qty, 0);
+  // Kembalikan fokus ke scan input
+  setTimeout(() => { const inp = document.getElementById('m_inp'); if (inp) inp.focus(); }, 100);
+}
+
+// ── Manajemen Hapus ──
+async function m_hapusSatuBin() {
+  const b = prompt('Masukkan nama BIN:'); if (!b) return;
+  const target = b.toUpperCase().trim();
+  if (!confirm(`Hapus semua data BIN ${target}?`)) return;
+  const toDelete = queue.filter(i => i.bin.toUpperCase() === target);
+  const ids = toDelete.map(i => i.id).filter(Boolean);
+  if (ids.length) await IDB.deleteByIds('scanQueue', ids);
+  queue = queue.filter(i => i.bin.toUpperCase() !== target);
+  m_updateTotals(); m_renderTable();
+  alert(`✅ ${toDelete.length} data BIN ${target} dihapus.`);
+}
+
+async function m_kosongkanSemua() {
+  const pass = prompt('Masukkan password otoritas:'); if (!pass) return;
+  if (pass !== PASSWORD_HAPUS) { alert('❌ Password salah!'); return; }
+  if (!confirm('Yakin kosongkan SEMUA data SCAN?')) return;
+  await IDB.clearStore('scanQueue'); queue = [];
+  m_updateTotals(); m_renderTable();
+  alert('✅ Data SCAN berhasil dikosongkan!');
+}
+
+// ── Export ──
+async function m_exportExcelScan() {
+  let data = queue;
+  try { data = await IDB.getAll('scanQueue'); } catch(_) {}
+  if (!data.length) { alert('Tidak ada data SCAN.'); return; }
+  const bin    = document.getElementById('m_bin').value.toUpperCase().trim();
+  const lokasi = document.getElementById('m_lokasi').value;
+  const p = prompt('EXPORT:\n1 → Semua BIN\n2 → BIN aktif (' + (bin || '—') + ')');
+  if (!p) return;
+  let rows = data;
+  if (p === '2') {
+    if (!bin) { alert('Isi BIN dulu.'); return; }
+    rows = data.filter(i => i.bin === bin);
+    if (!rows.length) { alert('Tidak ada data di BIN ' + bin); return; }
+  } else if (p !== '1') { alert('Pilihan tidak valid.'); return; }
+  const HDR = ['BARCODE','LOKASI','ARTICLE','BIN','SIZE US','SIZE UK','DESCRIPTION','BRAND NAME','MERCH.CAT','SEASON YR.','DATE','USER'];
+  const sd  = [HDR, ...rows.map(item => {
+    const sUS = m__getSizeUS(item.article);
+    const sUK = m__getSizeUK(sUS, m__getGender(item.article.charAt(0)));
+    return [item.barcode||'', item.lokasi||lokasi, item.article||'', item.bin||'',
+            sUS||'', sUK||'-', item.desc||'', item.brand||'', item.cat||'',
+            item.season||'', item.date||'', item.user||''];
+  })];
+  m__dlXLSX(sd, 'SCAN', `SCAN${p==='2'?'_'+bin:'_SEMUA'}_${m__today()}.xlsx`);
+}
+
+function m__today() {
+  return new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' }).replace(/\//g, '-');
+}
+function m__dlXLSX(sd, sn, fn) {
+  const wb = XLSX.utils.book_new(), ws = XLSX.utils.aoa_to_sheet(sd);
+  ws['!cols'] = sd[0].map((h, ci) => ({
+    wch: Math.min(sd.reduce((m, r) => Math.max(m, String(r[ci]??'').length), String(h).length) + 2, 40)
+  }));
+  XLSX.utils.book_append_sheet(wb, ws, sn); XLSX.writeFile(wb, fn);
+}
+
+// ── CSV Export (Mobile) ──
+async function m_exportCSVScan() {
+  let data = queue;
+  try { data = await IDB.getAll('scanQueue'); } catch(_) {}
+  if (!data.length) { alert('Tidak ada data SCAN untuk diexport.'); return; }
+  
+  const bin    = document.getElementById('m_bin').value.toUpperCase().trim();
+  const lokasi = document.getElementById('m_lokasi').value;
+  const p = prompt('EXPORT CSV:\n1 → Semua BIN\n2 → BIN aktif (' + (bin || '—') + ')');
+  if (!p) return;
+  
+  let rows = data;
+  if (p === '2') {
+    if (!bin) { alert('Isi BIN dulu.'); return; }
+    rows = data.filter(i => i.bin === bin);
+    if (!rows.length) { alert('Tidak ada data di BIN ' + bin); return; }
+  } else if (p !== '1') { alert('Pilihan tidak valid.'); return; }
+  
+  const HDR = ['BARCODE','LOKASI','ARTICLE','BIN','SIZE US','SIZE UK','DESCRIPTION','BRAND NAME','MERCH.CAT','SEASON YR.','DATE','USER'];
+  const csvRows = [];
+  csvRows.push(HDR.join(','));
+  
+  for (const item of rows) {
+    const sUS = m__getSizeUS(item.article);
+    const sUK = m__getSizeUK(sUS, m__getGender(item.article.charAt(0)));
+    const row = [
+      item.barcode || '',
+      item.lokasi || lokasi,
+      item.article || '',
+      item.bin || '',
+      sUS || '',
+      sUK || '-',
+      item.desc || '',
+      item.brand || '',
+      item.cat || '',
+      item.season || '',
+      item.date || '',
+      item.user || ''
+    ].map(cell => `"${String(cell).replace(/"/g, '""')}"`); // Escape quotes
+    csvRows.push(row.join(','));
+  }
+  
+  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  link.setAttribute('download', `SCAN_${p==='2'?bin:'SEMUA'}_${m__today()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// ── Backup (Mobile) ──
+async function m_downloadOfflineBackup() {
+  let scan = queue, doDat = doData;
+  try { scan  = await IDB.getAll('scanQueue'); } catch(_) {}
+  try { doDat = await IDB.getAll('doStore');   } catch(_) {}
+  
+  const total = scan.length + doDat.length;
+  if (!total) { alert('ℹ️ Tidak ada data untuk di-backup.'); return; }
+  
+  const payload = {
+    scan: scan.map(({ id:_, ...r }) => r),
+    do:   doDat.map(({ id:_, ...r }) => r),
+    ts:   new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `BACKUP_${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Restore (Mobile) ──
+async function m_restoreOfflineBackup(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      const scanItems = Array.isArray(parsed) ? parsed : (parsed.scan || []);
+      const doItems = parsed.do || [];
+      let ok = 0;
+      
+      // Backup existing data? Optional: ask user if they want to merge or replace.
+      if (!confirm(`Restore akan menambahkan ${scanItems.length} data SCAN dan ${doItems.length} data DO ke data yang sudah ada. Lanjutkan?`)) return;
+      
+      for (const item of scanItems) {
+        try {
+          const id = await IDB.addItem('scanQueue', item);
+          queue.push({...item, id});
+          ok++;
+        } catch(_) {}
+      }
+      for (const item of doItems) {
+        try {
+          const id = await IDB.addItem('doStore', item);
+          doData.push({...item, id});
+          ok++;
+        } catch(_) {}
+      }
+      
+      m_updateTotals();
+      m_renderTable();
+      alert(`✅ Restore selesai! ${ok} item dimuat (SCAN: ${scanItems.length}, DO: ${doItems.length}).`);
+    } catch(err) {
+      alert('❌ File backup tidak valid!\n' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = ''; // Reset input
+}
+
+// ── Beep ──
+function m_playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine'; osc.frequency.setValueAtTime(900, ctx.currentTime);
+    gain.gain.setValueAtTime(0.07, ctx.currentTime);
+    osc.start(); osc.stop(ctx.currentTime + 0.08);
+  } catch(_) {}
+}
+
+if (window.__IS_MOBILE) { _mob_init(); }
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
