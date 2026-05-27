@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>WMS LEAGUE - Manajemen Gudang</title>
+  <title>WMS LEAGUE - Warehouse Management System</title>
   
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
       getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc,
-      query, where, onSnapshot, writeBatch, enableIndexedDbPersistence
+      query, where, onSnapshot, writeBatch, enableIndexedDbPersistence, setDoc
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
     import {
       getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     
-    // Konfigurasi Firebase Anda (GANTI DENGAN PUNYA ANDA)
+    // ===== KONFIGURASI FIREBASE - GANTI DENGAN PUNYA ANDA =====
     const firebaseConfig = {
   apiKey: "AIzaSyBbga_f0scLVVJSMj9nVkmZybxgpBTicdI",
   authDomain: "scan-wms-e8a3f.firebaseapp.com",
@@ -26,46 +26,38 @@
   appId: "1:1052999562779:web:26c8219b5fb2dbc816aabe"
 };
     
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
     
-    // Enable offline persistence
-    enableIndexedDbPersistence(db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-      } else if (err.code === 'unimplemented') {
-        console.warn('The current browser does not support persistence.');
-      }
-    });
+    enableIndexedDbPersistence(db).catch(() => {});
     
-    // Expose to global window
-    window.firebase = { db, auth, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, onSnapshot, writeBatch };
+    window.firebase = { db, auth };
+    window.firestoreHelpers = { collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, onSnapshot, writeBatch, setDoc };
     window.firebaseAuth = { signInWithEmailAndPassword, signOut, onAuthStateChanged };
   </script>
   
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&family=Barlow+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   
   <style>
-    /* ===== BASE STYLE (diambil dari WMS MULTI-STORE) ===== */
     :root {
-      --sea-blue:  #006994;
-      --deep-ocean:#004c6d;
-      --accent:    #00c2ff;
-      --bg-light:  #f0f4f8;
+      --sea-blue: #006994;
+      --deep-ocean: #004c6d;
+      --accent: #00c2ff;
+      --bg-light: #f0f4f8;
       --text-dark: #0f172a;
-      --danger:    #dc2626;
-      --warning:   #f59e0b;
-      --success:   #10b981;
-      --border:    #cbd5e1;
+      --danger: #dc2626;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --border: #cbd5e1;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Space Grotesk', sans-serif; background: var(--bg-light); height: 100vh; overflow: hidden; }
     .hidden { display: none !important; }
     
-    /* Loading Overlay */
+    /* Loading */
     #loadingOverlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.6);
@@ -82,8 +74,9 @@
       margin-bottom: 14px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
     
-    /* ===== LOGIN ===== */
+    /* LOGIN */
     #loginOverlay {
       position: fixed; inset: 0;
       background: linear-gradient(135deg, var(--deep-ocean) 0%, #002d42 100%);
@@ -100,8 +93,8 @@
       width: 340px;
     }
     .login-logo { font-size: 40px; margin-bottom: 8px; }
-    .login-box h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 34px; font-weight: 800; color: white; letter-spacing: 3px; margin-bottom: 4px; }
-    .login-sub { color: rgba(255,255,255,0.45); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 28px; }
+    .login-box h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 34px; font-weight: 800; color: white; letter-spacing: 3px; }
+    .login-sub { color: rgba(255,255,255,0.45); font-size: 11px; letter-spacing: 1px; margin-bottom: 28px; }
     .login-box input {
       width: 100%; padding: 13px 16px; margin-bottom: 12px;
       border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.2);
@@ -114,58 +107,38 @@
       width: 100%; padding: 14px; border: none; border-radius: 10px;
       background: var(--accent); color: #003d52;
       font-weight: 800; cursor: pointer; font-size: 16px;
-      font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;
-      transition: 0.2s;
+      font-family: 'Barlow Condensed', sans-serif;
+      text-transform: uppercase; transition: 0.2s;
     }
     .btn-login:hover { background: white; }
+    .error-msg { color: #ff6b6b; font-size: 12px; margin-top: 10px; text-align: center; }
     
-    /* ===== APP LAYOUT ===== */
-    #appContainer {
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
-    
-    /* Sidebar (sama seperti WMS MULTI-STORE) */
+    /* APP LAYOUT */
+    #appContainer { display: flex; height: 100vh; overflow: hidden; }
     .sidebar {
-      width: 280px;
-      flex-shrink: 0;
-      background: var(--sea-blue);
-      color: white;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
+      width: 280px; flex-shrink: 0;
+      background: var(--sea-blue); color: white;
+      height: 100vh; display: flex; flex-direction: column;
     }
     .sidebar-header {
-      padding: 20px;
-      background: var(--deep-ocean);
+      padding: 20px; background: var(--deep-ocean);
       border-bottom: 2px solid rgba(255,255,255,0.1);
       text-align: center;
     }
-    .sidebar-header h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 800; letter-spacing: 2px; }
+    .sidebar-header h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 800; }
     #displayStoreName { font-size: 13px; color: #ffeb3b; margin-top: 5px; font-weight: 700; }
-    .sidebar-content {
-      padding: 14px;
-      overflow-y: auto;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+    .sidebar-content { padding: 14px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; }
     .input-card {
       background: rgba(255,255,255,0.1);
-      padding: 12px;
-      border-radius: 10px;
+      padding: 12px; border-radius: 10px;
       border: 1px solid rgba(255,255,255,0.15);
     }
-    .input-card p { margin: 0 0 8px 0; font-size: 13px; font-weight: 800; letter-spacing: 0.5px; }
-    .input-card label { font-size: 12px; color: rgba(255,255,255,0.7); display: block; margin-bottom: 4px; }
+    .input-card p { margin: 0 0 8px 0; font-size: 13px; font-weight: 800; }
     input, select {
       width: 100%; padding: 9px 11px; margin-bottom: 6px;
       border-radius: 7px; border: 1px solid var(--border);
       font-size: 15px; font-family: inherit; outline: none;
     }
-    input:focus, select:focus { border-color: var(--sea-blue); box-shadow: 0 0 0 3px rgba(0,105,148,0.12); }
     .btn-primary {
       width: 100%; padding: 11px; border: none; border-radius: 8px;
       font-weight: 700; cursor: pointer; background: white;
@@ -173,13 +146,9 @@
       font-size: 14px; transition: 0.2s;
     }
     .btn-primary:hover { background: var(--accent); color: white; }
-    .btn-success {
-      background: var(--success); color: white;
-    }
+    .btn-success { background: var(--success); color: white; }
     .btn-success:hover { background: #0d9488; }
-    .btn-danger {
-      background: var(--danger); color: white;
-    }
+    .btn-danger { background: var(--danger); color: white; }
     .btn-danger:hover { background: #b91c1c; }
     .btn-logout {
       background: rgba(220,38,38,0.15); color: #ffcccc;
@@ -188,6 +157,12 @@
       font-size: 13px; margin-top: auto;
     }
     .btn-logout:hover { background: var(--danger); color: white; }
+    .btn-back-to-scan {
+      background: rgba(255,235,59,0.2); color: #ffeb3b;
+      border: 1px solid rgba(255,235,59,0.3);
+      margin-bottom: 10px;
+    }
+    .btn-back-to-scan:hover { background: #ffeb3b; color: var(--deep-ocean); }
     
     .store-toggle {
       display: flex; gap: 6px; margin-bottom: 12px;
@@ -200,82 +175,43 @@
     }
     .store-toggle-btn.active { background: white; color: var(--sea-blue); }
     
-    /* Main Content */
-    .main-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
+    .main-content { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
     .top-navbar {
-      height: 64px;
-      background: var(--sea-blue);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 24px;
-      flex-shrink: 0;
+      height: 64px; background: var(--sea-blue); color: white;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; flex-shrink: 0;
     }
     #summary {
-      font-weight: 700;
-      font-size: 15px;
-      background: rgba(0,0,0,0.2);
-      padding: 8px 14px;
-      border-radius: 8px;
+      font-weight: 700; font-size: 15px;
+      background: rgba(0,0,0,0.2); padding: 8px 14px; border-radius: 8px;
     }
     .view-toggle {
-      display: flex;
-      gap: 8px;
-      background: rgba(255,255,255,0.15);
-      padding: 4px;
-      border-radius: 40px;
+      display: flex; gap: 8px;
+      background: rgba(255,255,255,0.15); padding: 4px; border-radius: 40px;
     }
     .toggle-btn {
-      padding: 8px 18px;
-      border: none;
-      border-radius: 30px;
-      font-weight: 700;
-      font-size: 13px;
-      cursor: pointer;
-      background: transparent;
-      color: white;
-      transition: 0.25s;
+      padding: 8px 18px; border: none; border-radius: 30px;
+      font-weight: 700; font-size: 13px; cursor: pointer;
+      background: transparent; color: white; transition: 0.25s;
     }
     .toggle-btn.active { background: white; color: var(--sea-blue); }
     .live-indicator {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 700;
-      background: rgba(0,0,0,0.2);
-      padding: 6px 13px;
-      border-radius: 20px;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; font-weight: 700;
+      background: rgba(0,0,0,0.2); padding: 6px 13px; border-radius: 20px;
     }
-    .dot {
-      width: 9px; height: 9px;
-      background: #22c55e;
-      border-radius: 50%;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .dot { width: 9px; height: 9px; background: #22c55e; border-radius: 50%; animation: pulse 1.5s infinite; }
     
-    .table-wrapper {
-      flex: 1;
-      overflow: auto;
-      background: white;
-    }
+    .table-wrapper { flex: 1; overflow: auto; background: white; }
     
-    /* ===== BIN CARDS VIEW (sama seperti WMS MULTI-STORE) ===== */
+    /* BIN CARDS */
     .bin-cards-container { display: flex; flex-direction: column; gap: 12px; padding: 20px; background: white; min-height: 100%; }
     .bin-card-list {
       background: white; border-radius: 16px; padding: 18px 22px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.08);
       border-left: 8px solid var(--sea-blue);
       cursor: pointer;
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between;
       border: 1px solid #e2e8f0;
       transition: 0.2s;
     }
@@ -283,12 +219,12 @@
     .bin-card-left { display: flex; align-items: center; gap: 15px; }
     .bin-icon { font-size: 32px; }
     .bin-name { font-family: 'Barlow Condensed', sans-serif; font-size: 24px; font-weight: 800; color: var(--deep-ocean); }
-    .bin-store { font-size: 14px; color: #64748b; margin-top: 4px; }
+    .bin-store { font-size: 14px; color: #64748b; }
     .bin-stats { text-align: right; }
     .bin-count { font-size: 36px; font-weight: 800; color: var(--sea-blue); line-height: 1; }
     .bin-count-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; }
     
-    /* ===== BIN DETAIL TABLE ===== */
+    /* BIN DETAIL */
     .bin-detail-header {
       background: var(--sea-blue); color: white;
       padding: 15px 25px;
@@ -301,7 +237,6 @@
       border-radius: 30px; font-weight: 700; cursor: pointer;
     }
     .bin-detail-title { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; }
-    
     .bin-detail-table {
       width: 100%;
       border-collapse: collapse;
@@ -311,18 +246,12 @@
       border: 1px solid #e2e8f0;
       text-align: center;
     }
-    .bin-detail-table th {
-      background: #f1f5f9;
-      font-weight: 700;
-      position: sticky;
-      top: 0;
-    }
+    .bin-detail-table th { background: #f1f5f9; position: sticky; top: 0; }
     .variant-cell { font-weight: 800; color: var(--deep-ocean); }
     .qty-cell { font-size: 18px; font-weight: 800; color: var(--sea-blue); }
-    .action-cell { padding: 8px 6px; }
     .action-wrapper { display: flex; gap: 6px; align-items: center; justify-content: center; flex-wrap: wrap; }
     .qty-input { width: 60px; padding: 6px; text-align: center; border: 1px solid var(--border); border-radius: 5px; }
-    .bin-input { width: 80px; padding: 6px; text-align: center; border: 1px solid var(--border); border-radius: 5px; text-transform: uppercase; }
+    .bin-input { width: 80px; padding: 6px; text-align: center; border: 1px solid var(--border); border-radius: 5px; }
     .btn-jual, .btn-move {
       padding: 6px 12px; border: none; border-radius: 5px;
       font-weight: 700; cursor: pointer; color: white;
@@ -331,7 +260,7 @@
     .btn-move { background: var(--warning); }
     .btn-jual:hover, .btn-move:hover { opacity: 0.85; }
     
-    /* ===== LAYOUT VIEW (DRAG & DROP) ===== */
+    /* LAYOUT VIEW */
     .bin-layout-wrapper {
       display: flex; flex-direction: column; height: 100%;
       overflow: hidden;
@@ -364,9 +293,7 @@
     }
     .floor-tab-btn.active { background: var(--sea-blue); color: white; }
     
-    .layout-canvas-scroll {
-      flex: 1; overflow: auto; position: relative;
-    }
+    .layout-canvas-scroll { flex: 1; overflow: auto; position: relative; }
     .layout-canvas {
       position: relative; min-height: 400px;
       width: 100%; background-color: #f0f4f8;
@@ -383,6 +310,7 @@
       cursor: grab;
       box-shadow: 0 2px 8px rgba(0,0,0,0.07);
       overflow: hidden;
+      transition: all 0.1s;
     }
     .lbin-card.dragging { cursor: grabbing; opacity: 0.8; }
     .lbin-header {
@@ -406,14 +334,16 @@
       width: 14px; height: 14px;
       cursor: se-resize;
       background: linear-gradient(135deg, transparent 50%, var(--border) 50%);
+      border-radius: 0 0 10px 0;
     }
     .lbin-delete {
       position: absolute; top: 4px; right: 4px;
       width: 18px; height: 18px;
       background: var(--danger); color: white;
       border: none; border-radius: 50%;
-      font-size: 11px; cursor: pointer;
+      font-size: 11px; font-weight: 800; cursor: pointer;
       display: none; align-items: center; justify-content: center;
+      z-index: 20;
     }
     .lbin-card.edit-mode .lbin-delete { display: flex; }
     .lbin-card.edit-mode { cursor: grab; }
@@ -422,26 +352,21 @@
       text-align: center; padding: 8px;
       color: var(--sea-blue);
     }
+    .lbin-label { display: none; }
     .layout-legend {
       display: flex; gap: 14px; padding: 5px 14px;
       background: white; border-top: 1px solid var(--border);
       font-size: 11px; flex-shrink: 0;
     }
     .leg-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 4px; }
-    
-    /* Highlight untuk pencarian */
     .lbin-card.highlighted {
       outline: 3px solid #10b981;
       animation: pulse 1s infinite;
     }
-    .lbin-card.search-dim { opacity: 0.25; }
+    .lbin-card.search-dim { opacity: 0.25; filter: grayscale(0.5); }
+    .lbin-card.empty-card { border-style: dashed; opacity: 0.65; }
     
-    @keyframes pulse {
-      0%,100% { outline-color: #10b981; }
-      50% { outline-color: #34d399; outline-width: 5px; }
-    }
-    
-    /* Modal */
+    /* MODAL */
     .modal-overlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.45);
@@ -481,6 +406,7 @@
     .modal-tag {
       font-size: 11px; padding: 2px 8px; border-radius: 20px;
       display: inline-block; margin-right: 4px;
+      background: #f1f5f9;
     }
     .modal-footer {
       padding: 14px 20px; border-top: 1px solid #f1f5f9;
@@ -492,7 +418,6 @@
 </head>
 <body>
 
-<!-- LOADING -->
 <div id="loadingOverlay">
   <div class="spinner"></div>
   <div id="loadingText">Memuat...</div>
@@ -503,10 +428,11 @@
   <div class="login-box">
     <div class="login-logo">📦</div>
     <h2>WMS LEAGUE</h2>
-    <p class="login-sub">Warehouse Management System</p>
-    <input type="text" id="emailLogin" placeholder="Email" autocomplete="off">
-    <input type="password" id="passwordLogin" placeholder="Password" autocomplete="off">
-    <button class="btn-login" onclick="doLogin()">Masuk →</button>
+    <p class="login-sub">Multi-Store Warehouse Management</p>
+    <input type="email" id="loginEmail" placeholder="Email" autocomplete="off">
+    <input type="password" id="loginPassword" placeholder="Password" autocomplete="off">
+    <button class="btn-login" id="loginBtn">MASUK →</button>
+    <div id="loginError" class="error-msg"></div>
   </div>
 </div>
 
@@ -518,11 +444,15 @@
       <div id="displayStoreName"></div>
     </div>
     <div class="sidebar-content">
+      <button class="btn-logout btn-back-to-scan" onclick="window.location.href='index.html'">
+        <i class="fas fa-qrcode"></i> ◀ SCAN BARCODE
+      </button>
+      
       <div class="input-card">
-        <p>FILTER TOKO</p>
+        <p>📌 FILTER TOKO</p>
         <div class="store-toggle">
-          <button class="store-toggle-btn active" onclick="setStoreFilter('own')">🏠 TOKO SENDIRI</button>
-          <button class="store-toggle-btn" onclick="setStoreFilter('all')">🌐 SEMUA TOKO</button>
+          <button class="store-toggle-btn active" id="btnOwn" onclick="setStoreFilter('own')">🏠 TOKO SENDIRI</button>
+          <button class="store-toggle-btn" id="btnAll" onclick="setStoreFilter('all')">🌐 SEMUA TOKO</button>
         </div>
       </div>
       
@@ -537,15 +467,13 @@
       </div>
       
       <div class="input-card">
-        <p style="color:#10b981">📥 DOWNLOAD DATA</p>
-        <button class="btn-success" onclick="downloadExcel()">📊 Download Excel Toko Ini</button>
+        <p style="color:#10b981">📥 DOWNLOAD</p>
+        <button class="btn-success" onclick="downloadExcel()">📊 Download Excel</button>
       </div>
-      <!-- Di wms.html, tambahkan di sidebar -->
-<button class="btn btn-ghost" onclick="window.location.href='index.html'" style="margin-top:10px">
-  <i class="fas fa-qrcode"></i> KEMBALI KE SCAN
-</button>
       
-      <button class="btn-logout" onclick="logoutSystem()">🔒 LOGOUT</button>
+      <button class="btn-logout" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i> LOGOUT
+      </button>
     </div>
   </div>
   
@@ -562,7 +490,7 @@
   </div>
 </div>
 
-<!-- MODAL DETAIL BIN -->
+<!-- MODAL -->
 <div id="binModal" class="modal-overlay" style="display:none" onclick="closeBinModal(event)">
   <div class="modal-box" onclick="event.stopPropagation()">
     <div class="modal-head">
@@ -579,11 +507,13 @@
 
 <script type="module">
   // =============================================
-  // FIREBASE INTEGRATION - WMS DASHBOARD
+  // WMS LENGKAP - Multi-Store dengan Firebase
   // =============================================
   
+  import { collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, onSnapshot, writeBatch, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  
   // Global state
-  let allData = [];           // Data stok dari Firestore
+  let allData = [];
   let currentUser = null;
   let currentStoreCode = null;
   let userRole = "TOKO";
@@ -593,271 +523,127 @@
   let layoutPositions = {};
   let layoutEditMode = false;
   let currentLayoutFloor = 1;
-  let floorNames = { "default": ["Lantai 1"] };
-  let layoutDirty = false;
+  let floorNames = {};
   let layoutSearchHL = new Set();
-  let layoutSearchHL_items = {};
-  let allStores = [];
   let unsubscribeStock = null;
   
   const CARD_W = 128, CARD_H = 148, PAD = 20;
-  let IS_MOBILE = window.innerWidth < 768;
   
-  // Helper functions
   function showLoading(t) { 
     document.getElementById("loadingText").innerText = t || "Mohon Tunggu..."; 
     document.getElementById("loadingOverlay").style.display = "flex"; 
   }
   function hideLoading() { document.getElementById("loadingOverlay").style.display = "none"; }
   
-  // ========== AUTH ==========
-  window.doLogin = async function() {
-    const email = document.getElementById("emailLogin").value.trim();
-    const password = document.getElementById("passwordLogin").value;
-    if (!email || !password) return alert("Isi email dan password!");
-    
+  // ========== LOGIN ==========
+  async function doLogin(email, password) {
     showLoading("Login...");
+    document.getElementById("loginError").innerText = "";
+    
     try {
       const userCredential = await window.firebaseAuth.signInWithEmailAndPassword(
         window.firebase.auth, email, password
       );
       currentUser = userCredential.user;
       
-      // Ambil data user dari Firestore
-      const userDoc = await window.firebase.getDoc(
-        window.firebase.doc(window.firebase.db, "users", currentUser.uid)
-      );
-      const userData = userDoc.data();
-      currentStoreCode = userData?.storeCode || email.split('@')[0].toUpperCase();
-      userRole = userData?.role || "TOKO";
+      const userDoc = await getDoc(doc(window.firebase.db, "users", currentUser.uid));
+      if (!userDoc.exists()) {
+        // Auto create user data
+        const defaultStoreCode = email.split('@')[0].toUpperCase();
+        await setDoc(doc(window.firebase.db, "users", currentUser.uid), {
+          email: email,
+          storeCode: defaultStoreCode,
+          role: "TOKO",
+          name: defaultStoreCode,
+          createdAt: new Date().toISOString()
+        });
+        currentStoreCode = defaultStoreCode;
+        userRole = "TOKO";
+      } else {
+        const userData = userDoc.data();
+        currentStoreCode = userData.storeCode;
+        userRole = userData.role || "TOKO";
+      }
       
-      // Tampilkan UI
       document.getElementById("loginOverlay").style.display = "none";
       document.getElementById("appContainer").classList.remove("hidden");
-      document.getElementById("displayStoreName").innerText = `📦 ${currentStoreCode} (${userRole})`;
+      document.getElementById("displayStoreName").innerHTML = `📦 ${currentStoreCode} (${userRole})`;
       
-      // Inisialisasi
-      await loadAllStores();
       await loadLayoutFromFirestore();
       startStockListener();
-      
       hideLoading();
     } catch (err) {
       hideLoading();
-      alert("Login gagal: " + err.message);
+      document.getElementById("loginError").innerText = err.message;
     }
-  };
+  }
   
-  window.logoutSystem = async function() {
-    if (!confirm("Keluar dari sistem?")) return;
+  async function logout() {
+    if (!confirm("Logout?")) return;
     if (unsubscribeStock) unsubscribeStock();
     await window.firebaseAuth.signOut(window.firebase.auth);
     currentUser = null;
     document.getElementById("appContainer").classList.add("hidden");
     document.getElementById("loginOverlay").style.display = "flex";
-    document.getElementById("emailLogin").value = "";
-    document.getElementById("passwordLogin").value = "";
-  };
-  
-  // ========== LOAD STORES ==========
-  async function loadAllStores() {
-    const storesSnapshot = await window.firebase.getDocs(
-      window.firebase.collection(window.firebase.db, "stores")
-    );
-    allStores = storesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
   
-  // ========== STOCK LISTENER (REALTIME) ==========
+  // ========== STOCK LISTENER ==========
   function startStockListener() {
     if (unsubscribeStock) unsubscribeStock();
     
     let q;
     if (userRole === "ADMIN" && storeFilterMode === "all") {
-      q = window.firebase.collection(window.firebase.db, "stock");
+      q = collection(window.firebase.db, "stock");
     } else {
-      q = window.firebase.query(
-        window.firebase.collection(window.firebase.db, "stock"),
-        window.firebase.where("storeCode", "==", currentStoreCode)
-      );
+      q = query(collection(window.firebase.db, "stock"), where("storeCode", "==", currentStoreCode));
     }
     
-    unsubscribeStock = window.firebase.onSnapshot(q, (snapshot) => {
+    unsubscribeStock = onSnapshot(q, (snapshot) => {
       allData = [];
       snapshot.forEach(doc => {
         const data = doc.data();
         allData.push([
-          data.storeCode,
-          data.storeName || data.storeCode,
-          data.generic || "",
-          data.cat || "",
-          data.variant || "",
-          data.name || "",
-          data.sizeUS || "",
-          data.sizeUK || "",
-          data.bin || "",
-          data.qty || 0,
-          doc.id
+          data.storeCode, data.storeName || data.storeCode, data.generic || "", data.cat || "",
+          data.variant || "", data.name || "", data.sizeUS || "", data.sizeUK || "",
+          data.bin || "", data.qty || 0, doc.id
         ]);
       });
-      
-      // Filter data yang valid
       allData = allData.filter(row => row[8] && row[9] > 0);
       
-      console.log("📊 Data update:", allData.length, "items");
-      
-      // Refresh tampilan
       if (viewMode === "bin") {
-        if (selectedBinDetail) {
-          const binData = allData.filter(r => r[8] === selectedBinDetail);
-          renderBinDetail(binData);
-        } else {
-          renderBinCards();
-        }
-      } else if (viewMode === "layout") {
+        if (selectedBinDetail) renderBinDetail(filterDataByStore(allData).filter(r => r[8] === selectedBinDetail));
+        else renderBinCards();
+      } else {
         renderLayoutCanvas();
       }
-      
       updateSummary();
-    }, (err) => {
-      console.error("Listener error:", err);
     });
   }
   
-  // ========== HELPER ==========
   function filterDataByStore(data) {
-    if (storeFilterMode === "own") {
-      return data.filter(row => row[0] === currentStoreCode);
-    }
-    return data;
+    if (storeFilterMode === "all" && userRole === "ADMIN") return data;
+    return data.filter(row => row[0] === currentStoreCode);
   }
   
   function updateSummary() {
     const filtered = filterDataByStore(allData);
     const totalQty = filtered.reduce((s, r) => s + (r[9] || 0), 0);
-    const totalItems = filtered.length;
-    const el = document.getElementById("summary");
-    if (el) el.innerText = `${totalItems} item | Qty: ${totalQty}`;
+    document.getElementById("summary").innerText = `${filtered.length} item | Qty: ${totalQty}`;
   }
   
   window.setStoreFilter = function(mode) {
+    if (mode === "all" && userRole !== "ADMIN") {
+      alert("Hanya ADMIN yang bisa melihat semua toko!");
+      return;
+    }
     storeFilterMode = mode;
-    document.querySelectorAll('.store-toggle-btn').forEach((btn, i) => {
-      btn.classList.toggle('active', (i === 0 && mode === 'own') || (i === 1 && mode === 'all'));
-    });
+    document.getElementById("btnOwn").classList.toggle("active", mode === "own");
+    document.getElementById("btnAll").classList.toggle("active", mode === "all");
     selectedBinDetail = null;
-    
-    // Restart listener dengan filter baru
     startStockListener();
   };
   
-  // ========== BIN CARDS VIEW ==========
-  function renderBinCards() {
-    const container = document.getElementById("mainContent");
-    const filtered = filterDataByStore(allData);
-    
-    const binGroups = {};
-    filtered.forEach(row => {
-      const bin = row[8];
-      const key = row[0] + "|" + bin;
-      if (!binGroups[key]) {
-        binGroups[key] = {
-          bin, store: row[1], storeCode: row[0],
-          totalQty: 0, uniqueSkus: new Set()
-        };
-      }
-      binGroups[key].totalQty += row[9];
-      binGroups[key].uniqueSkus.add(row[4]);
-    });
-    
-    const sorted = Object.values(binGroups).sort((a, b) => a.bin.localeCompare(b.bin));
-    
-    let html = '<div class="bin-cards-container">';
-    if (sorted.length === 0) {
-      html = '<div style="text-align:center;padding:60px;color:#94a3b8;">📦 Belum ada data stok</div>';
-    } else {
-      sorted.forEach(bg => {
-        html += `
-          <div class="bin-card-list" onclick="showBinDetail('${bg.bin}')">
-            <div class="bin-card-left">
-              <span class="bin-icon">📦</span>
-              <div>
-                <div class="bin-name">BIN ${bg.bin}</div>
-                <div class="bin-store">${bg.store}</div>
-              </div>
-            </div>
-            <div class="bin-stats">
-              <div class="bin-count">${bg.totalQty}</div>
-              <div class="bin-count-label">Total Qty</div>
-            </div>
-          </div>
-        `;
-      });
-    }
-    html += '</div>';
-    container.innerHTML = html;
-    updateSummary();
-  }
-  
-  window.showBinDetail = function(bin) {
-    selectedBinDetail = bin;
-    const binData = filterDataByStore(allData).filter(r => r[8] === bin);
-    renderBinDetail(binData);
-  };
-  
-  function renderBinDetail(binData) {
-    const container = document.getElementById("mainContent");
-    const bin = selectedBinDetail;
-    
-    let html = `
-      <div style="display:flex;flex-direction:column;height:100%;">
-        <div class="bin-detail-header">
-          <button class="btn-back" onclick="backToBinCards()">← KEMBALI</button>
-          <div class="bin-detail-title">BIN ${bin}</div>
-          <div style="flex:1"></div>
-          <span>${binData.length} item</span>
-        </div>
-        <div style="flex:1;overflow:auto;padding:0;">
-          <table class="bin-detail-table">
-            <thead><tr>
-              <th>Variant</th><th>Name</th><th>US</th><th>UK</th><th>Qty</th><th>Aksi</th>
-            </tr></thead>
-            <tbody>
-    `;
-    
-    binData.forEach((row, idx) => {
-      const canEdit = userRole === "ADMIN" || row[0] === currentStoreCode;
-      html += `
-        <tr>
-          <td class="variant-cell">${row[4] || '-'}</td>
-          <td>${row[5] || '-'}</td>
-          <td>${row[6] || '-'}</td>
-          <td>${row[7] || '-'}</td>
-          <td class="qty-cell">${row[9]}</td>
-          <td class="action-cell">
-            ${canEdit ? `
-              <div class="action-wrapper">
-                <input type="number" id="detail_qty_${idx}" class="qty-input" value="1" min="1" max="${row[9]}" style="width:60px">
-                <button class="btn-jual" onclick="jualStock('${row[4]}', '${row[8]}', '${row[0]}', ${idx})">JUAL</button>
-                <input type="text" id="detail_movebin_${idx}" class="bin-input" placeholder="Ke BIN" value="${row[8]}">
-                <button class="btn-move" onclick="moveStock('${row[4]}', '${row[8]}', '${row[0]}', ${idx})">MOVE</button>
-              </div>
-            ` : '<span style="color:#94a3b8">🔒 ${row[1]}</span>'}
-          </td>
-        </tr>
-      `;
-    });
-    
-    html += `</tbody></table></div></div>`;
-    container.innerHTML = html;
-    updateSummary();
-  }
-  
-  window.backToBinCards = function() {
-    selectedBinDetail = null;
-    renderBinCards();
-  };
-  
-  // ========== STOCK OPERATIONS (Firestore) ==========
+  // ========== INBOUND ==========
   window.inboundStock = async function() {
     const sku = document.getElementById("inboundSku").value.trim().toUpperCase();
     const bin = document.getElementById("inboundBin").value.trim().toUpperCase();
@@ -870,23 +656,20 @@
     
     showLoading("Menambah stok...");
     try {
-      // Cari apakah sudah ada
-      const q = window.firebase.query(
-        window.firebase.collection(window.firebase.db, "stock"),
-        window.firebase.where("storeCode", "==", currentStoreCode),
-        window.firebase.where("variant", "==", sku),
-        window.firebase.where("bin", "==", bin)
+      const q = query(
+        collection(window.firebase.db, "stock"),
+        where("storeCode", "==", currentStoreCode),
+        where("variant", "==", sku),
+        where("bin", "==", bin)
       );
-      const snapshot = await window.firebase.getDocs(q);
+      const snapshot = await getDocs(q);
       
       if (!snapshot.empty) {
-        // Update existing
         const docRef = snapshot.docs[0].ref;
         const oldQty = snapshot.docs[0].data().qty || 0;
-        await window.firebase.updateDoc(docRef, { qty: oldQty + qty });
+        await updateDoc(docRef, { qty: oldQty + qty });
       } else {
-        // Create new
-        await window.firebase.addDoc(window.firebase.collection(window.firebase.db, "stock"), {
+        await addDoc(collection(window.firebase.db, "stock"), {
           storeCode: currentStoreCode,
           storeName: currentStoreCode,
           variant: sku,
@@ -895,15 +678,12 @@
           qty: qty,
           sizeUS: sku.slice(-3) || "",
           sizeUK: "-",
-          generic: "",
-          cat: "",
           createdAt: new Date().toISOString()
         });
       }
       
       document.getElementById("inboundSku").value = "";
       document.getElementById("inboundBin").value = "";
-      document.getElementById("inboundQty").value = "1";
       hideLoading();
       alert("✅ Stok berhasil ditambahkan!");
     } catch (err) {
@@ -912,22 +692,21 @@
     }
   };
   
+  // ========== JUAL ==========
   window.jualStock = async function(sku, bin, storeCode, idx) {
-    const qtyInput = document.getElementById(`detail_qty_${idx}`);
-    if (!qtyInput) return;
-    const qty = parseInt(qtyInput.value);
+    const qty = parseInt(document.getElementById(`detail_qty_${idx}`).value);
     if (!qty || qty <= 0) return alert("QTY tidak valid!");
-    if (!confirm(`Jual ${sku} x${qty} dari BIN ${bin}?`)) return;
+    if (!confirm(`Jual ${sku} x${qty}?`)) return;
     
     showLoading("Memproses...");
     try {
-      const q = window.firebase.query(
-        window.firebase.collection(window.firebase.db, "stock"),
-        window.firebase.where("storeCode", "==", storeCode),
-        window.firebase.where("variant", "==", sku),
-        window.firebase.where("bin", "==", bin)
+      const q = query(
+        collection(window.firebase.db, "stock"),
+        where("storeCode", "==", storeCode),
+        where("variant", "==", sku),
+        where("bin", "==", bin)
       );
-      const snapshot = await window.firebase.getDocs(q);
+      const snapshot = await getDocs(q);
       if (snapshot.empty) throw new Error("Data tidak ditemukan");
       
       const docRef = snapshot.docs[0].ref;
@@ -935,11 +714,8 @@
       if (currentQty < qty) throw new Error("Stok tidak cukup!");
       
       const newQty = currentQty - qty;
-      if (newQty === 0) {
-        await window.firebase.deleteDoc(docRef);
-      } else {
-        await window.firebase.updateDoc(docRef, { qty: newQty });
-      }
+      if (newQty === 0) await deleteDoc(docRef);
+      else await updateDoc(docRef, { qty: newQty });
       
       hideLoading();
       alert("✅ Penjualan berhasil!");
@@ -949,30 +725,26 @@
     }
   };
   
+  // ========== MOVE ==========
   window.moveStock = async function(sku, binAsal, storeCode, idx) {
-    const qtyInput = document.getElementById(`detail_qty_${idx}`);
-    const binTujuanInput = document.getElementById(`detail_movebin_${idx}`);
-    if (!qtyInput || !binTujuanInput) return;
+    const qty = parseInt(document.getElementById(`detail_qty_${idx}`).value);
+    const binTujuan = document.getElementById(`detail_movebin_${idx}`).value.trim().toUpperCase();
     
-    const qty = parseInt(qtyInput.value);
-    const binTujuan = binTujuanInput.value.trim().toUpperCase();
     if (!qty || qty <= 0) return alert("QTY tidak valid!");
     if (!binTujuan) return alert("Isi BIN tujuan!");
-    if (binTujuan === binAsal) return alert("BIN tujuan sama dengan asal!");
     if (!confirm(`Pindah ${sku} x${qty} dari ${binAsal} ke ${binTujuan}?`)) return;
     
     showLoading("Memindahkan...");
     try {
-      const batch = window.firebase.writeBatch(window.firebase.db);
+      const batch = writeBatch(window.firebase.db);
       
-      // Kurangi dari asal
-      const qAsal = window.firebase.query(
-        window.firebase.collection(window.firebase.db, "stock"),
-        window.firebase.where("storeCode", "==", storeCode),
-        window.firebase.where("variant", "==", sku),
-        window.firebase.where("bin", "==", binAsal)
+      const qAsal = query(
+        collection(window.firebase.db, "stock"),
+        where("storeCode", "==", storeCode),
+        where("variant", "==", sku),
+        where("bin", "==", binAsal)
       );
-      const snapAsal = await window.firebase.getDocs(qAsal);
+      const snapAsal = await getDocs(qAsal);
       if (snapAsal.empty) throw new Error("Data asal tidak ditemukan");
       
       const docAsal = snapAsal.docs[0];
@@ -980,28 +752,21 @@
       if (currentQty < qty) throw new Error("Stok asal tidak cukup!");
       
       const newQtyAsal = currentQty - qty;
-      if (newQtyAsal === 0) {
-        batch.delete(docAsal.ref);
-      } else {
-        batch.update(docAsal.ref, { qty: newQtyAsal });
-      }
+      if (newQtyAsal === 0) batch.delete(docAsal.ref);
+      else batch.update(docAsal.ref, { qty: newQtyAsal });
       
-      // Tambah ke tujuan
-      const qTujuan = window.firebase.query(
-        window.firebase.collection(window.firebase.db, "stock"),
-        window.firebase.where("storeCode", "==", storeCode),
-        window.firebase.where("variant", "==", sku),
-        window.firebase.where("bin", "==", binTujuan)
+      const qTujuan = query(
+        collection(window.firebase.db, "stock"),
+        where("storeCode", "==", storeCode),
+        where("variant", "==", sku),
+        where("bin", "==", binTujuan)
       );
-      const snapTujuan = await window.firebase.getDocs(qTujuan);
+      const snapTujuan = await getDocs(qTujuan);
       
       if (!snapTujuan.empty) {
-        const docTujuan = snapTujuan.docs[0];
-        const newQtyTujuan = (docTujuan.data().qty || 0) + qty;
-        batch.update(docTujuan.ref, { qty: newQtyTujuan });
+        batch.update(snapTujuan.docs[0].ref, { qty: (snapTujuan.docs[0].data().qty || 0) + qty });
       } else {
-        const newRef = window.firebase.doc(window.firebase.collection(window.firebase.db, "stock"));
-        batch.set(newRef, {
+        batch.set(doc(collection(window.firebase.db, "stock")), {
           storeCode: storeCode,
           storeName: storeCode,
           variant: sku,
@@ -1010,8 +775,6 @@
           qty: qty,
           sizeUS: sku.slice(-3) || "",
           sizeUK: "-",
-          generic: "",
-          cat: "",
           createdAt: new Date().toISOString()
         });
       }
@@ -1025,22 +788,113 @@
     }
   };
   
-  // ========== LAYOUT VIEW ==========
+  // ========== BIN CARDS ==========
+  function renderBinCards() {
+    const container = document.getElementById("mainContent");
+    const filtered = filterDataByStore(allData);
+    
+    const binGroups = {};
+    filtered.forEach(row => {
+      const bin = row[8];
+      const key = row[0] + "|" + bin;
+      if (!binGroups[key]) {
+        binGroups[key] = { bin, store: row[1], totalQty: 0, uniqueSkus: new Set() };
+      }
+      binGroups[key].totalQty += row[9];
+      binGroups[key].uniqueSkus.add(row[4]);
+    });
+    
+    const sorted = Object.values(binGroups).sort((a, b) => a.bin.localeCompare(b.bin));
+    
+    let html = '<div class="bin-cards-container">';
+    if (sorted.length === 0) {
+      html = '<div style="text-align:center;padding:60px;color:#94a3b8;">📦 Belum ada data stok</div>';
+    } else {
+      sorted.forEach(bg => {
+        html += `<div class="bin-card-list" onclick="showBinDetail('${bg.bin}')">
+          <div class="bin-card-left">
+            <span class="bin-icon">📦</span>
+            <div>
+              <div class="bin-name">BIN ${bg.bin}</div>
+              <div class="bin-store">${bg.store}</div>
+            </div>
+          </div>
+          <div class="bin-stats">
+            <div class="bin-count">${bg.totalQty}</div>
+            <div class="bin-count-label">Total Qty</div>
+          </div>
+        </div>`;
+      });
+    }
+    html += '</div>';
+    container.innerHTML = html;
+    updateSummary();
+  }
+  
+  window.showBinDetail = function(bin) {
+    selectedBinDetail = bin;
+    renderBinDetail(filterDataByStore(allData).filter(r => r[8] === bin));
+  };
+  
+  function renderBinDetail(binData) {
+    const container = document.getElementById("mainContent");
+    const bin = selectedBinDetail;
+    
+    let html = `<div style="display:flex;flex-direction:column;height:100%;">
+      <div class="bin-detail-header">
+        <button class="btn-back" onclick="backToBinCards()">← KEMBALI</button>
+        <div class="bin-detail-title">BIN ${bin}</div>
+        <div style="flex:1"></div>
+        <span>${binData.length} item</span>
+      </div>
+      <div style="flex:1;overflow:auto;">
+        <table class="bin-detail-table">
+          <thead><tr><th>Variant</th><th>Name</th><th>US</th><th>UK</th><th>Qty</th><th>Aksi</th></tr></thead>
+          <tbody>`;
+    
+    binData.forEach((row, idx) => {
+      const canEdit = row[0] === currentStoreCode || userRole === "ADMIN";
+      html += `<tr>
+        <td class="variant-cell">${row[4]}</td>
+        <td>${row[5]}</td>
+        <td>${row[6]}</td>
+        <td>${row[7]}</td>
+        <td class="qty-cell">${row[9]}</td>
+        <td class="action-cell">
+          ${canEdit ? `
+            <div class="action-wrapper">
+              <input type="number" id="detail_qty_${idx}" class="qty-input" value="1" min="1" max="${row[9]}">
+              <button class="btn-jual" onclick="jualStock('${row[4]}', '${row[8]}', '${row[0]}', ${idx})">JUAL</button>
+              <input type="text" id="detail_movebin_${idx}" class="bin-input" placeholder="Ke BIN" value="${row[8]}">
+              <button class="btn-move" onclick="moveStock('${row[4]}', '${row[8]}', '${row[0]}', ${idx})">MOVE</button>
+            </div>
+          ` : `<span>🔒 ${row[1]}</span>`}
+        </td>
+      </tr>`;
+    });
+    
+    html += `</tbody></table></div></div>`;
+    container.innerHTML = html;
+    updateSummary();
+  }
+  
+  window.backToBinCards = function() {
+    selectedBinDetail = null;
+    renderBinCards();
+  };
+  
+  // ========== LAYOUT ==========
   async function loadLayoutFromFirestore() {
     try {
-      const layoutDoc = await window.firebase.getDoc(
-        window.firebase.doc(window.firebase.db, "layouts", currentStoreCode)
-      );
+      const layoutDoc = await getDoc(doc(window.firebase.db, "layouts", currentStoreCode));
       if (layoutDoc.exists()) {
         const data = layoutDoc.data();
         layoutPositions = data.positions || {};
         floorNames[currentStoreCode] = data.floors || ["Lantai 1"];
-        if (floorNames[currentStoreCode].length === 0) floorNames[currentStoreCode] = ["Lantai 1"];
       } else {
         floorNames[currentStoreCode] = ["Lantai 1"];
       }
     } catch (err) {
-      console.error("Load layout error:", err);
       floorNames[currentStoreCode] = ["Lantai 1"];
     }
   }
@@ -1048,13 +902,11 @@
   async function saveLayoutToFirestore() {
     showLoading("Menyimpan layout...");
     try {
-      const layoutRef = window.firebase.doc(window.firebase.db, "layouts", currentStoreCode);
-      await window.firebase.setDoc(layoutRef, {
+      await setDoc(doc(window.firebase.db, "layouts", currentStoreCode), {
         positions: layoutPositions,
         floors: floorNames[currentStoreCode],
         updatedAt: new Date().toISOString()
-      }, { merge: true });
-      layoutDirty = false;
+      });
       hideLoading();
       alert("✅ Layout tersimpan!");
     } catch (err) {
@@ -1069,10 +921,7 @@
     filtered.forEach(row => {
       const key = row[0] + "|" + row[8];
       if (!groups[key]) {
-        groups[key] = {
-          storeCode: row[0], storeName: row[1],
-          bin: row[8], items: [], totalQty: 0
-        };
+        groups[key] = { storeCode: row[0], storeName: row[1], bin: row[8], items: [], totalQty: 0 };
       }
       groups[key].items.push(row);
       groups[key].totalQty += row[9];
@@ -1085,62 +934,51 @@
     const binGroups = buildBinGroupsForLayout();
     const floors = floorNames[currentStoreCode] || ["Lantai 1"];
     
-    let html = `
-      <div class="bin-layout-wrapper">
-        <div class="bin-layout-toolbar">
-          <span>🗺️ ${currentStoreCode}</span>
-          <input type="text" id="layoutSearch" placeholder="🔍 Cari SKU..." style="width:200px;margin-bottom:0;" oninput="layoutSearch(this.value)">
-          <button class="blk-btn" onclick="layoutClearSearch()">Reset</button>
-          <button class="blk-btn ${layoutEditMode ? 'active' : ''}" onclick="toggleLayoutEdit()">${layoutEditMode ? '🔒 Selesai Edit' : '✏️ Edit Layout'}</button>
-          <button class="blk-btn save" onclick="saveLayoutToFirestore()">💾 Simpan</button>
-        </div>
-        <div class="floor-tabs">
-    `;
+    let html = `<div class="bin-layout-wrapper">
+      <div class="bin-layout-toolbar">
+        <span>🗺️ ${currentStoreCode}</span>
+        <input type="text" id="layoutSearch" placeholder="🔍 Cari SKU..." style="width:200px;margin-bottom:0;" oninput="layoutSearch(this.value)">
+        <button class="blk-btn" onclick="layoutClearSearch()">Reset</button>
+        <button class="blk-btn ${layoutEditMode ? 'active' : ''}" onclick="toggleLayoutEdit()">${layoutEditMode ? '🔒 Selesai Edit' : '✏️ Edit Layout'}</button>
+        <button class="blk-btn save" onclick="saveLayoutToFirestore()">💾 Simpan</button>
+        <button class="blk-btn" onclick="addBinToLayout()">+ Bin</button>
+        <button class="blk-btn" onclick="addAlfaToLayout()">🔤 Alfabet</button>
+      </div>
+      <div class="floor-tabs">`;
     
     floors.forEach((fname, i) => {
-      const fnum = i + 1;
-      html += `<button class="floor-tab-btn ${currentLayoutFloor === fnum ? 'active' : ''}" onclick="switchLayoutFloor(${fnum})">${fname}</button>`;
+      html += `<button class="floor-tab-btn ${currentLayoutFloor === i+1 ? 'active' : ''}" onclick="switchLayoutFloor(${i+1})">${fname}</button>`;
     });
-    html += `<button class="blk-btn" style="margin-left:6px;padding:4px 12px;" onclick="addLayoutFloor()">+ Lantai</button>`;
-    html += `<button class="blk-btn" style="background:#dc2626;color:white;" onclick="deleteLayoutFloor()">✕ Hapus Lantai</button>`;
-    html += `</div>
-        <div class="layout-canvas-scroll" id="layoutCanvasScroll">
-          <div class="layout-canvas" id="layoutCanvas"></div>
-        </div>
-        <div class="layout-legend">
-          <span><span class="leg-dot" style="background:var(--sea-blue)"></span>Bin aktif</span>
-          <span><span class="leg-dot" style="background:#94a3b8"></span>Bin kosong</span>
-          <span><span class="leg-dot" style="background:var(--success)"></span>Cocok pencarian</span>
-          <span>${layoutEditMode ? 'Drag = pindah • Sudut = resize • 🔴 = hapus' : 'Klik bin = lihat isi'}</span>
-        </div>
+    html += `<button class="blk-btn" onclick="addLayoutFloor()">+ Lantai</button>
+        <button class="blk-btn" style="background:#dc2626;color:white;" onclick="deleteLayoutFloor()">✕ Hapus</button>
       </div>
-    `;
+      <div class="layout-canvas-scroll"><div class="layout-canvas" id="layoutCanvas"></div></div>
+      <div class="layout-legend">
+        <span><span class="leg-dot" style="background:var(--sea-blue)"></span>Bin aktif</span>
+        <span><span class="leg-dot" style="background:#94a3b8"></span>Bin kosong</span>
+        <span><span class="leg-dot" style="background:var(--success)"></span>Cocok</span>
+        <span>${layoutEditMode ? 'Drag = pindah • Sudut = resize • 🔴 = hapus' : 'Klik bin = lihat isi'}</span>
+      </div>
+    </div>`;
     
     container.innerHTML = html;
     
-    // Render cards
     const canvas = document.getElementById("layoutCanvas");
     if (!canvas) return;
-    
     canvas.innerHTML = "";
-    const floor = currentLayoutFloor;
-    const myStore = currentStoreCode;
     let maxY = 0;
     
     Object.keys(layoutPositions).forEach(lk => {
       const parts = lk.split("|");
-      if (parseInt(parts[2]) !== floor) return;
-      const storeP = parts[0];
-      const binP = parts[1];
-      
-      if (storeP !== myStore && !(userRole === "ADMIN" && storeFilterMode === "all")) return;
+      if (parseInt(parts[2]) !== currentLayoutFloor) return;
+      if (parts[0] !== currentStoreCode && storeFilterMode !== "all") return;
       
       const pos = layoutPositions[lk];
       if (!pos) return;
       
-      const isAlfa = binP.startsWith("_ALFA_");
-      const bgKey = storeP + "|" + binP;
-      const bg = binGroups[bgKey] || { bin: binP, items: [], totalQty: 0 };
+      const isAlfa = parts[1].startsWith("_ALFA_");
+      const bgKey = parts[0] + "|" + parts[1];
+      const bg = binGroups[bgKey] || { bin: parts[1], items: [], totalQty: 0 };
       const isEmpty = bg.items.length === 0;
       const isHL = layoutSearchHL.has(bgKey);
       const isDim = layoutSearchHL.size > 0 && !isHL;
@@ -1151,29 +989,21 @@
       card.dataset.key = lk;
       
       if (isAlfa) {
-        card.innerHTML = `
-          <button class="lbin-delete" onclick="deleteBinFromLayout('${lk}')">✕</button>
+        card.innerHTML = `<button class="lbin-delete" onclick="deleteBinFromLayout('${lk}')">✕</button>
           <div class="lbin-alfa" style="flex:1;display:flex;align-items:center;justify-content:center;color:${pos.color || '#006994'}">${pos.alfa || 'A'}</div>
           ${pos.label ? `<div style="text-align:center;font-size:10px;">${pos.label}</div>` : ''}
-          <div class="lbin-resize"></div>
-        `;
+          <div class="lbin-resize"></div>`;
       } else {
-        const dynFont = Math.max(14, Math.min(28, Math.floor((pos.w || CARD_W) / Math.max(binP.length, 3) * 1.6))) + "px";
-        card.innerHTML = `
-          <button class="lbin-delete" onclick="deleteBinFromLayout('${lk}')">✕</button>
+        const dynFont = Math.max(14, Math.min(28, Math.floor((pos.w || CARD_W) / Math.max(parts[1].length, 3) * 1.6))) + "px";
+        card.innerHTML = `<button class="lbin-delete" onclick="deleteBinFromLayout('${lk}')">✕</button>
           <div class="lbin-header" style="background:${pos.color || '#006994'}">
-            <div class="lbin-bin-num" style="font-size:${dynFont}">${binP}</div>
+            <div class="lbin-bin-num" style="font-size:${dynFont}">${parts[1]}</div>
             <div class="lbin-count-badge">${bg.items.length} SKU · ${bg.totalQty} pcs</div>
           </div>
-          <div class="lbin-resize"></div>
-        `;
+          <div class="lbin-resize"></div>`;
       }
       
-      // Event listeners
-      const resizeDiv = card.querySelector(".lbin-resize");
-      if (resizeDiv) {
-        resizeDiv.addEventListener("mousedown", (e) => startResize(e, lk));
-      }
+      card.querySelector(".lbin-resize")?.addEventListener("mousedown", (e) => startResize(e, lk));
       card.addEventListener("mousedown", (e) => {
         if (e.target.classList.contains("lbin-resize") || e.target.classList.contains("lbin-delete")) return;
         if (layoutEditMode) startDrag(e, lk);
@@ -1191,30 +1021,25 @@
   function startDrag(e, lk) {
     e.preventDefault();
     const card = e.currentTarget;
-    const rect = card.getBoundingClientRect();
     dragState = { lk, startX: e.clientX, startY: e.clientY, startLeft: parseInt(card.style.left), startTop: parseInt(card.style.top), moved: false };
     
     function onMove(mv) {
       const dx = mv.clientX - dragState.startX;
       const dy = mv.clientY - dragState.startY;
-      const newLeft = Math.max(0, dragState.startLeft + dx);
-      const newTop = Math.max(0, dragState.startTop + dy);
-      card.style.left = newLeft + "px";
-      card.style.top = newTop + "px";
+      card.style.left = Math.max(0, dragState.startLeft + dx) + "px";
+      card.style.top = Math.max(0, dragState.startTop + dy) + "px";
       dragState.moved = true;
     }
     
     function onUp() {
-      if (dragState && dragState.moved && layoutPositions[lk]) {
+      if (dragState?.moved && layoutPositions[lk]) {
         layoutPositions[lk].x = parseInt(card.style.left);
         layoutPositions[lk].y = parseInt(card.style.top);
-        layoutDirty = true;
       }
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       dragState = null;
     }
-    
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }
@@ -1227,167 +1052,113 @@
     const startH = layoutPositions[lk]?.h || CARD_H;
     
     function onMove(mv) {
-      const dw = mv.clientX - startX;
-      const dh = mv.clientY - startY;
-      const nw = Math.max(80, startW + dw);
-      const nh = Math.max(60, startH + dh);
+      const nw = Math.max(80, startW + (mv.clientX - startX));
+      const nh = Math.max(60, startH + (mv.clientY - startY));
       card.style.width = nw + "px";
       card.style.height = nh + "px";
-      if (layoutPositions[lk]) {
-        layoutPositions[lk].w = nw;
-        layoutPositions[lk].h = nh;
-      }
-      layoutDirty = true;
+      if (layoutPositions[lk]) { layoutPositions[lk].w = nw; layoutPositions[lk].h = nh; }
     }
-    
-    function onUp() {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    }
-    
+    function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
   }
   
-  window.toggleLayoutEdit = function() {
-    layoutEditMode = !layoutEditMode;
-    renderLayoutCanvas();
-  };
-  
-  window.switchLayoutFloor = function(floor) {
-    currentLayoutFloor = floor;
-    renderLayoutCanvas();
-  };
-  
+  window.toggleLayoutEdit = function() { layoutEditMode = !layoutEditMode; renderLayoutCanvas(); };
+  window.switchLayoutFloor = function(floor) { currentLayoutFloor = floor; renderLayoutCanvas(); };
   window.addLayoutFloor = function() {
-    const floors = floorNames[currentStoreCode];
-    const newName = "Lantai " + (floors.length + 1);
-    floors.push(newName);
-    floorNames[currentStoreCode] = floors;
-    currentLayoutFloor = floors.length;
-    layoutDirty = true;
+    floorNames[currentStoreCode].push("Lantai " + (floorNames[currentStoreCode].length + 1));
     renderLayoutCanvas();
   };
-  
   window.deleteLayoutFloor = function() {
-    const floors = floorNames[currentStoreCode];
-    if (floors.length <= 1) return alert("Minimal 1 lantai!");
-    if (!confirm(`Hapus ${floors[currentLayoutFloor - 1]}?`)) return;
-    floors.splice(currentLayoutFloor - 1, 1);
-    floorNames[currentStoreCode] = floors;
-    if (currentLayoutFloor > floors.length) currentLayoutFloor = floors.length;
-    layoutDirty = true;
+    if (floorNames[currentStoreCode].length <= 1) return alert("Minimal 1 lantai!");
+    if (!confirm(`Hapus ${floorNames[currentStoreCode][currentLayoutFloor-1]}?`)) return;
+    floorNames[currentStoreCode].splice(currentLayoutFloor-1, 1);
+    if (currentLayoutFloor > floorNames[currentStoreCode].length) currentLayoutFloor = floorNames[currentStoreCode].length;
     renderLayoutCanvas();
   };
-  
+  window.addBinToLayout = function() {
+    const binCode = prompt("Kode bin baru:");
+    if (!binCode) return;
+    const lk = currentStoreCode + "|" + binCode.trim().toUpperCase() + "|" + currentLayoutFloor;
+    if (layoutPositions[lk]) return alert("Bin sudah ada!");
+    let startY = PAD;
+    const existKeys = Object.keys(layoutPositions).filter(k => k.endsWith("|" + currentLayoutFloor));
+    if (existKeys.length > 0) {
+      let maxBot = 0;
+      existKeys.forEach(k => { const p = layoutPositions[k]; maxBot = Math.max(maxBot, (p.y || 0) + (p.h || CARD_H)); });
+      startY = maxBot + 20;
+    }
+    layoutPositions[lk] = { x: PAD, y: startY, w: CARD_W, h: CARD_H, label: "", floor: currentLayoutFloor, alfa: "", color: "#006994" };
+    renderLayoutCanvas();
+  };
+  window.addAlfaToLayout = function() {
+    const letter = prompt("Huruf/teks penanda:");
+    if (!letter) return;
+    const lk = currentStoreCode + "|_ALFA_" + Date.now() + "|" + currentLayoutFloor;
+    layoutPositions[lk] = { x: PAD+10, y: PAD+10, w: 90, h: 80, label: "", floor: currentLayoutFloor, alfa: letter.trim().toUpperCase(), color: "#f59e0b" };
+    renderLayoutCanvas();
+  };
   window.deleteBinFromLayout = function(lk) {
-    if (!confirm("Hapus bin ini dari layout?")) return;
-    delete layoutPositions[lk];
-    layoutDirty = true;
-    renderLayoutCanvas();
+    if (confirm("Hapus bin ini?")) { delete layoutPositions[lk]; renderLayoutCanvas(); }
   };
-  
   window.layoutSearch = function(val) {
     const q = val.toLowerCase();
-    if (!q) {
-      layoutSearchHL.clear();
-      layoutSearchHL_items = {};
-    } else {
+    if (!q) { layoutSearchHL.clear(); }
+    else {
       const binGroups = buildBinGroupsForLayout();
       layoutSearchHL.clear();
-      layoutSearchHL_items = {};
       Object.keys(binGroups).forEach(key => {
         const bg = binGroups[key];
         let hit = bg.bin.toLowerCase().includes(q);
         bg.items.forEach(item => {
-          if (String(item[4] || "").toLowerCase().includes(q) || 
-              String(item[5] || "").toLowerCase().includes(q)) {
-            hit = true;
-            if (!layoutSearchHL_items[key]) layoutSearchHL_items[key] = new Set();
-            layoutSearchHL_items[key].add(item[4]);
-          }
+          if (String(item[4]).toLowerCase().includes(q) || String(item[5]).toLowerCase().includes(q)) hit = true;
         });
         if (hit) layoutSearchHL.add(key);
       });
     }
     renderLayoutCanvas();
   };
-  
   window.layoutClearSearch = function() {
     document.getElementById("layoutSearch").value = "";
     layoutSearchHL.clear();
-    layoutSearchHL_items = {};
     renderLayoutCanvas();
   };
   
   function openBinModalFromLayout(lk, bg) {
-    const parts = lk.split("|");
-    const binCode = bg.bin;
-    const items = bg.items;
-    const totalQty = bg.totalQty;
-    
-    document.getElementById("modalBinTitle").textContent = `BIN ${binCode}`;
-    document.getElementById("modalBinSub").textContent = `${bg.storeName} — ${items.length} item, total ${totalQty} pcs`;
-    
+    document.getElementById("modalBinTitle").innerHTML = `BIN ${bg.bin}`;
+    document.getElementById("modalBinSub").innerHTML = `${bg.storeName} — ${bg.items.length} item, total ${bg.totalQty} pcs`;
     let bodyHtml = "";
-    items.forEach((row, idx) => {
-      const canEdit = userRole === "ADMIN" || row[0] === currentStoreCode;
-      bodyHtml += `
-        <div class="modal-item-row">
-          <span class="modal-sku-badge">${row[4]}</span>
-          <div class="modal-item-info">
-            <div class="modal-item-name">${row[5]}</div>
-            <div>
-              <span class="modal-tag">US ${row[6]}</span>
-              <span class="modal-tag">UK ${row[7]}</span>
-              <span class="modal-tag">Qty: ${row[9]}</span>
-            </div>
-          </div>
-          ${canEdit ? `
-            <div style="display:flex;gap:5px;">
-              <input type="number" id="modal_qty_${idx}" class="modal-qty-input" value="1" min="1" max="${row[9]}" style="width:60px">
-              <button class="modal-btn-jual" onclick="modalJual('${row[4]}', '${row[8]}', '${row[0]}', ${idx})">JUAL</button>
-            </div>
-          ` : `<span>🔒</span>`}
+    bg.items.forEach((row, idx) => {
+      bodyHtml += `<div class="modal-item-row">
+        <span class="modal-sku-badge">${row[4]}</span>
+        <div class="modal-item-info">
+          <div class="modal-item-name">${row[5]}</div>
+          <div><span class="modal-tag">US ${row[6]}</span><span class="modal-tag">UK ${row[7]}</span><span class="modal-tag">Qty: ${row[9]}</span></div>
         </div>
-      `;
+        <div><input type="number" id="modal_qty_${idx}" class="modal-qty-input" value="1" min="1" max="${row[9]}"><button class="modal-btn-jual" onclick="modalJual('${row[4]}', '${row[8]}', '${row[0]}', ${idx})">JUAL</button></div>
+      </div>`;
     });
-    
     document.getElementById("modalBinBody").innerHTML = bodyHtml || '<div class="modal-empty">Bin kosong</div>';
     document.getElementById("modalBinFooter").innerHTML = '<button class="blk-btn" onclick="document.getElementById(\'binModal\').style.display=\'none\'">Tutup</button>';
     document.getElementById("binModal").style.display = "flex";
   }
   
   window.modalJual = async function(sku, bin, storeCode, idx) {
-    const qtyInput = document.getElementById(`modal_qty_${idx}`);
-    if (!qtyInput) return;
-    const qty = parseInt(qtyInput.value);
+    const qty = parseInt(document.getElementById(`modal_qty_${idx}`).value);
     if (!qty || qty <= 0) return alert("QTY tidak valid!");
-    if (!confirm(`Jual ${sku} x${qty}?`)) return;
-    
     document.getElementById("binModal").style.display = "none";
+    
     showLoading("Memproses...");
     try {
-      const q = window.firebase.query(
-        window.firebase.collection(window.firebase.db, "stock"),
-        window.firebase.where("storeCode", "==", storeCode),
-        window.firebase.where("variant", "==", sku),
-        window.firebase.where("bin", "==", bin)
-      );
-      const snapshot = await window.firebase.getDocs(q);
+      const q = query(collection(window.firebase.db, "stock"), where("storeCode", "==", storeCode), where("variant", "==", sku), where("bin", "==", bin));
+      const snapshot = await getDocs(q);
       if (snapshot.empty) throw new Error("Data tidak ditemukan");
-      
       const docRef = snapshot.docs[0].ref;
       const currentQty = snapshot.docs[0].data().qty || 0;
       if (currentQty < qty) throw new Error("Stok tidak cukup!");
-      
       const newQty = currentQty - qty;
-      if (newQty === 0) {
-        await window.firebase.deleteDoc(docRef);
-      } else {
-        await window.firebase.updateDoc(docRef, { qty: newQty });
-      }
-      
+      if (newQty === 0) await deleteDoc(docRef);
+      else await updateDoc(docRef, { qty: newQty });
       hideLoading();
       alert("✅ Penjualan berhasil!");
     } catch (err) {
@@ -1396,26 +1167,16 @@
     }
   };
   
-  function closeBinModal(e) {
-    if (e.target === document.getElementById("binModal"))
-      document.getElementById("binModal").style.display = "none";
-  }
+  function closeBinModal(e) { if (e.target === document.getElementById("binModal")) document.getElementById("binModal").style.display = "none"; }
   window.closeBinModal = closeBinModal;
   
-  // ========== EXPORT EXCEL ==========
   window.downloadExcel = function() {
     const filtered = filterDataByStore(allData);
     if (filtered.length === 0) return alert("Tidak ada data!");
-    
     const headers = ["Store Code", "Store Name", "Generic", "Cat", "Variant", "Name", "Size US", "Size UK", "Bin", "Qty"];
-    const wsData = [headers];
-    filtered.forEach(row => {
-      wsData.push([row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]]);
-    });
-    
+    const wsData = [headers, ...filtered.map(row => [row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9]])];
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    XLSX.utils.book_append_sheet(wb, ws, "WMS Data");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsData), "WMS Data");
     XLSX.writeFile(wb, `WMS_${currentStoreCode}_${new Date().toISOString().slice(0,10)}.xlsx`);
   };
   
@@ -1424,46 +1185,28 @@
     document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
     if (mode === 'bin') {
       document.querySelector('.toggle-btn:first-child').classList.add('active');
-      if (selectedBinDetail) {
-        const binData = filterDataByStore(allData).filter(r => r[8] === selectedBinDetail);
-        renderBinDetail(binData);
-      } else {
-        renderBinCards();
-      }
+      if (selectedBinDetail) renderBinDetail(filterDataByStore(allData).filter(r => r[8] === selectedBinDetail));
+      else renderBinCards();
     } else {
       document.querySelector('.toggle-btn:last-child').classList.add('active');
       renderLayoutCanvas();
     }
   };
   
-  // Expose to window
-  window.setStoreFilter = setStoreFilter;
-  window.setViewMode = setViewMode;
-  window.showBinDetail = showBinDetail;
-  window.backToBinCards = backToBinCards;
-  window.jualStock = jualStock;
-  window.moveStock = moveStock;
-  window.inboundStock = inboundStock;
-  window.downloadExcel = downloadExcel;
-  window.saveLayoutToFirestore = saveLayoutToFirestore;
-  window.toggleLayoutEdit = toggleLayoutEdit;
-  window.switchLayoutFloor = switchLayoutFloor;
-  window.addLayoutFloor = addLayoutFloor;
-  window.deleteLayoutFloor = deleteLayoutFloor;
-  window.deleteBinFromLayout = deleteBinFromLayout;
-  window.layoutSearch = layoutSearch;
-  window.layoutClearSearch = layoutClearSearch;
-  window.modalJual = modalJual;
-  
-  // Cek auth state
-  window.firebaseAuth.onAuthStateChanged(window.firebase.auth, (user) => {
-    if (user && !currentUser) {
-      // Auto login jika sudah login sebelumnya
-      window.doLogin = null; // Biarkan user login manual
+  // Login event
+  document.getElementById("loginBtn").addEventListener("click", () => {
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    if (!email || !password) {
+      document.getElementById("loginError").innerText = "Isi email dan password!";
+      return;
     }
+    doLogin(email, password);
+  });
+  
+  document.getElementById("loginPassword").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") document.getElementById("loginBtn").click();
   });
 </script>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </body>
 </html>
