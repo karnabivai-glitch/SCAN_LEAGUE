@@ -1022,6 +1022,10 @@
             <button class="btn btn-ghost" onclick="konfirmasiHapusSemua()">
               <i class="fas fa-bomb"></i> Kosongkan Total
             </button>
+            <!-- Tambahkan di sidebar PC -->
+<button class="btn btn-cyan" onclick="window.location.href='wms.html'" style="margin-top:10px">
+  <i class="fas fa-warehouse"></i> BUKA WMS DASHBOARD
+</button>
           </div>
         </div>
       </div>
@@ -2861,6 +2865,21 @@ function m_playBeep() {
 }
 
 if (window.__IS_MOBILE) { _mob_init(); }
+
+// Tambahkan di index.html (LEAGUE SCAN)
+async function syncScanToWMS() {
+  const scans = queue; // data dari IndexedDB
+  for (const scan of scans) {
+    await firebase.addDoc(collection(db, "stock"), {
+      storeCode: currentUser,
+      variant: scan.article,
+      name: scan.desc,
+      bin: scan.bin,
+      qty: 1,
+      // ... field lainnya
+    });
+  }
+}
 
 </script>
 
